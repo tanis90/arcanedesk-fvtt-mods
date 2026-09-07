@@ -1,3 +1,4 @@
+export {resolveOptionRecipe} from './option-recipes.mjs';
 /** Shared progression transforms. Caller owns content, selection policy and reference mapping. */
 export function createAdvancementTools({rewriteUuid, excludedFeatureIds: excluded = [], uuidFor}) {
   if (typeof rewriteUuid !== 'function') throw Error('A reference mapper is required');
@@ -176,5 +177,80 @@ export function createAdvancementTools({rewriteUuid, excludedFeatureIds: exclude
         return ['Trait', 'ScaleValue'].includes(adv.type) ? clone(adv) : null;
       }).filter(Boolean);
   }
-  return Object.freeze({applyMartialClassProfile,applyStyleSubclassProfile,ensureItemGrant,applyGrantProfile,collectAdvancementItemIds,collectAdvancementItemChoicePoolIds,normalizeItemGrantAdvancement,filterClassAdvancement,normalizeActorStudioSpellLimitAdvancements,filterSubclassAdvancement});
+  function innateSpellGrant({ id, level, title, spellId, usesMax = "", usesPer = "" }) {
+    return {
+      _id: id,
+      type: "ItemGrant",
+      configuration: {
+        items: [{ uuid: uuidFor("spells", spellId), optional: false }],
+        optional: false,
+        spell: {
+          ability: ["cha"],
+          preparation: "innate",
+          uses: {
+            max: usesMax,
+            per: usesPer,
+            requireSlot: false,
+          },
+        },
+      },
+      value: {},
+      level,
+      title,
+    };
+  }
+
+  function traitAdvancement({ id, title, grants = [], choices = [] }) {
+    return {
+      _id: id,
+      type: "Trait",
+      configuration: {
+        mode: "default",
+        allowReplacements: false,
+        grants,
+        choices,
+      },
+      value: { chosen: [], grants: [] },
+      level: 0,
+      title,
+    };
+  }
+
+  function abilityScoreAdvancement({ id, title, points = 0, fixed = {}, locked = [] }) {
+    return {
+      _id: id,
+      type: "AbilityScoreImprovement",
+      configuration: {
+        points,
+        fixed: {
+          str: 0,
+          dex: 0,
+          con: 0,
+          int: 0,
+          wis: 0,
+          cha: 0,
+          ...fixed,
+        },
+        cap: 1,
+        locked,
+        recommendation: null,
+      },
+      value: {},
+      level: 0,
+      title,
+      flags: {},
+      hint: "",
+    };
+  }
+
+  function abilityChoiceAdvancement(id, title, abilities) {
+    const allowed = new Set(abilities);
+    return abilityScoreAdvancement({
+      id,
+      title,
+      points: 1,
+      locked: ["str", "dex", "con", "int", "wis", "cha"].filter(ability => !allowed.has(ability)),
+    });
+  }
+  return Object.freeze({innateSpellGrant,traitAdvancement,abilityScoreAdvancement,abilityChoiceAdvancement,applyMartialClassProfile,applyStyleSubclassProfile,ensureItemGrant,applyGrantProfile,collectAdvancementItemIds,collectAdvancementItemChoicePoolIds,normalizeItemGrantAdvancement,filterClassAdvancement,normalizeActorStudioSpellLimitAdvancements,filterSubclassAdvancement});
 }
