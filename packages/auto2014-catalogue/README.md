@@ -154,3 +154,16 @@ Bindings are snapshotted. Concrete private IDs, names and icon maps remain calle
 The malformed classpack link cleanup is limited to the bound Pact Magic document and preserves surrounding text.
 Normalization mutates supplied documents; it does not run Foundry workflows or update existing world Actors.
 The activities entry also exposes `keepOnlyActivity`, preserving the selected Activity's stable ID.
+
+## Class effect preparation
+
+`@arcanedesk/auto2014-catalogue/class-effects` exports `createClassEffectTools({moduleId, uuidFor, bindings})`.
+It returns the existing normalizers for Abjure Enemy, Vow of Enmity, Bardic/Font of Inspiration, Countercharm,
+Channel Divinity, Turn Undead, Vigilant Blessing, Twilight Sanctuary, Steps of Night, Dread Ambusher,
+Umbral Sight, Divine Smite, fighting-style flags and Aura of Protection cleanup.
+This is the existing implemented scope, not full automation coverage for every class feature.
+
+`bindings` supplies `effectIds` and `labels`; see the [original fixture](tests/fixtures/class-effect-bindings.mjs).
+The caller's descriptions and source content are not bundled. Inputs are snapshotted, while matched documents are mutated.
+Font of Inspiration uses the supplied namespace for its recovery flag; the Arcane internal namespace retains its original output.
+These helpers prepare data; live effects and declared riders still rely on the matching runtime.
