@@ -72,3 +72,27 @@ text or compile arbitrary third-party spell/class entries into Arcane automation
 The complete internal Auto 2014 build serializes this format, then reads it back through the shared API.
 Internal CI separately runs this public CLI on the complete prepared bundle and compares all 17 packs
 and 720 other artifacts with the reviewed migration baseline. Public tests use only original fixtures.
+
+## Installable ZIP output
+
+Add `--zip` to package the completed directory without a manual archive step:
+
+```sh
+arcane-build-module --input ./module-bundle.json --out ./output/my-module --zip ./output/my-module.zip
+```
+
+The JSON result includes `archive` with its absolute path, module identity, file count, compressed and
+uncompressed byte counts, and SHA256. The ZIP has `module.json` at its root. It can be handed to Desktop's
+local module installer; this command itself does not install, upload, enable a module or modify Actors.
+
+The API is `writeModuleArchive({directory, archive})`. Use a completed directory whose databases are
+closed and files are no longer being changed. It preserves every file byte and uses fixed ZIP timestamps
+and sorted paths. Repacking unchanged directory bytes yields the same ZIP; separate LevelDB rebuilds
+can still produce different physical database files and therefore different archive hashes.
+
+Archive output must be a new file outside the module directory, with an existing destination parent.
+Symlinks, case collisions, unsafe paths and self-inclusion are rejected. This in-memory ZIP writer is
+limited to 512 MiB of uncompressed source and 60,000 files; larger inputs require a future streaming
+implementation. Packaging uses the npm dependency fflate 0.8.3. A packaging failure can leave the completed
+module directory for inspection, but no successfully returned ZIP receipt; do not treat a failed command
+as a release. This is packaging, not a source-content validator or permission to redistribute a bundle.
