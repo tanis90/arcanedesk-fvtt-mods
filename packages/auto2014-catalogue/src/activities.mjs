@@ -171,5 +171,9 @@ export function createActivityTools({moduleId, spellAutomationProfiles: profiles
     }
     return doc.system.activities[activityId];
   }
-  return Object.freeze({ensureUtilityActivity,normalizeActivityForFullAutomation,spellActivityUsesMeasuredTemplate,effectiveSpellActivityTarget,effectiveSpellActivityRange,inferSpellActivityInput,spellAutomationProfile,inferTemplateTargetPolicy,normalizeSpellInteractionContracts,normalizeSelfItemUseActivity,setActivityCreatureTargets});
+  function keepOnlyActivity(doc, activity) {
+  if (!activity?._id) return;
+  doc.system.activities = { [activity._id]: activity };
+}
+  return Object.freeze({keepOnlyActivity,ensureUtilityActivity,normalizeActivityForFullAutomation,spellActivityUsesMeasuredTemplate,effectiveSpellActivityTarget,effectiveSpellActivityRange,inferSpellActivityInput,spellAutomationProfile,inferTemplateTargetPolicy,normalizeSpellInteractionContracts,normalizeSelfItemUseActivity,setActivityCreatureTargets});
 }
