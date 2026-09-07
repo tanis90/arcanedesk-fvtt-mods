@@ -46,7 +46,17 @@ for(const id of spellAutomationCompiledIds){const input={_id:'catalogueTest001',
   execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
 import {writeModule} from '@arcanedesk/foundry-pack-builder';
 const result=await writeModule({directory:'probe-module',manifest:{id:'probe-module',version:'1.0.0',packs:[{name:'items',path:'packs/items',type:'Item'}]},documents:{items:[{_id:'originalProbe001',name:'Original probe',effects:[]}]}});
-assert.equal(result.packs[0].records,1);`],{cwd:temp,stdio:'pipe'});
+  assert.equal(result.packs[0].records,1);`],{cwd:temp,stdio:'pipe'});
+  await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/summon-provider.mjs'),path.join(temp,'original-summon-fixture.mjs'));
+  execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
+import {createSummonAssembler} from '@arcanedesk/auto2014-catalogue/summons';
+import {writeModule} from '@arcanedesk/foundry-pack-builder';
+import {trainingSummonInput} from './original-summon-fixture.mjs';
+const input=trainingSummonInput();
+const {actors}=createSummonAssembler(input.contracts).assembleSummonProvider(input.provider);
+assert.equal(actors.length,1);assert.equal(actors[0]._id,'originalActor001');
+const result=await writeModule({directory:'probe-summon-module',manifest:{id:'arcane-dnd5e-2014-automation',version:'0.0.0',packs:[{name:'summons',path:'packs/summons',type:'Actor'}]},documents:{summons:actors}});
+assert.equal(result.packs[0].records,2);`],{cwd:temp,stdio:'pipe'});
   console.log(JSON.stringify(packedPackages.map(packed=>({name:packed.name,version:packed.version,files:packed.files.length,packedBytes:packed.size,installedOutsideWorkspace:true}))));
 } finally {
   // mkdtemp created this exact directory for this invocation; never remove caller paths.

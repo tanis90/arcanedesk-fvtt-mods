@@ -26,6 +26,8 @@ Its canonical runtime source is available under [packages/auto2014-runtime](pack
 The [automation catalogue](packages/auto2014-catalogue/README.md) contains 186 recipes that compose
 caller-supplied content through the shared compiler. The complete installable Foundry module remains under
 separation; these source packages do not distribute the existing full-text compendiums or summon creature data.
+The catalogue's `./summons` entry assembles summon Actors from caller-provided content and separately
+trusted validation data; it includes an original training fixture for independent verification.
 The [Foundry pack builder](packages/foundry-pack-builder/README.md) writes caller-supplied documents into
 compendiums and assembles new module directories. It shares the writer used by the complete internal build.
 
