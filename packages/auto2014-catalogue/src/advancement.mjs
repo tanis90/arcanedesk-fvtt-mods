@@ -1,5 +1,5 @@
 /** Shared progression transforms. Caller owns content, selection policy and reference mapping. */
-export function createAdvancementTools({rewriteUuid, excludedFeatureIds: excluded = []}) {
+export function createAdvancementTools({rewriteUuid, excludedFeatureIds: excluded = [], uuidFor}) {
   if (typeof rewriteUuid !== 'function') throw Error('A reference mapper is required');
   const excludedFeatureIds = new Set(excluded);
   const clone = value => JSON.parse(JSON.stringify(value));
@@ -84,5 +84,44 @@ export function createAdvancementTools({rewriteUuid, excludedFeatureIds: exclude
       })
       .filter(Boolean);
   }
-  return Object.freeze({collectAdvancementItemIds,collectAdvancementItemChoicePoolIds,normalizeItemGrantAdvancement,filterClassAdvancement,normalizeActorStudioSpellLimitAdvancements,filterSubclassAdvancement});
+  function ensureItemGrant(doc, { id, level, title, itemIds, packName = "classfeatures" }) {
+    if (typeof uuidFor !== "function") throw Error("A grant reference builder is required");
+    const existing = (doc.system.advancement ?? []).some(adv => {
+      if (adv.type !== "ItemGrant" || adv.level !== level) return false;
+      const existingIds = new Set((adv.configuration?.items ?? []).map(item => item.uuid?.split(".").pop()));
+      return itemIds.every(itemId => existingIds.has(itemId));
+    });
+    if (existing) return;
+
+    doc.system.advancement.push({
+      _id: id,
+      type: "ItemGrant",
+      configuration: {
+        items: itemIds.map(itemId => ({ uuid: uuidFor(packName, itemId), optional: false })),
+        optional: false,
+        spell: null,
+      },
+      value: {},
+      level,
+      title,
+    });
+  }
+
+  function applyGrantProfile(doc, {allowedFeatureIds: allowed, levelCap, grants}) {
+    if (!Array.isArray(allowed) || !Array.isArray(grants) || !Number.isFinite(levelCap)) throw Error('Invalid grant profile');
+    if (typeof uuidFor !== 'function') throw Error('A grant reference builder is required');
+    const allowedFeatureIds = new Set(allowed);
+    doc.system.advancement = (doc.system.advancement ?? [])
+      .map(adv => {
+        const level = adv.level ?? 1;
+        if (level > levelCap) return null;
+        if (adv.type === "ItemGrant") return normalizeItemGrantAdvancement(adv, allowedFeatureIds);
+        if (["Trait", "ScaleValue"].includes(adv.type)) return clone(adv);
+        return null;
+      })
+      .filter(Boolean);
+    // Explicit grants are the full declared progression, independent of source filtering.
+    for (const grant of grants) ensureItemGrant(doc, grant);
+  }
+  return Object.freeze({ensureItemGrant,applyGrantProfile,collectAdvancementItemIds,collectAdvancementItemChoicePoolIds,normalizeItemGrantAdvancement,filterClassAdvancement,normalizeActorStudioSpellLimitAdvancements,filterSubclassAdvancement});
 }
