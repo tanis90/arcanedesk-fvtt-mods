@@ -52,7 +52,9 @@ const result=await writeModule({directory:'probe-module',manifest:{id:'probe-mod
 import {createAdvancementTools} from '@arcanedesk/auto2014-catalogue/advancement';
 const doc={system:{advancement:[{type:'ItemGrant',level:20,configuration:{items:[{uuid:'Compendium.original.items.Item.original20'}]}}]}};
 createAdvancementTools({rewriteUuid:value=>value}).filterClassAdvancement(doc,{levelCap:20,allowedIds:new Set(['original20'])});
-assert.equal(doc.system.advancement.length,1);`],{cwd:temp,stdio:'pipe'});
+assert.equal(doc.system.advancement.length,1);
+createAdvancementTools({rewriteUuid:value=>value,uuidFor:(pack,id)=>'Compendium.original.'+pack+'.Item.'+id}).applyGrantProfile(doc,{levelCap:20,allowedFeatureIds:['original20'],grants:[{id:'originalExtra',level:3,title:'Original grant',itemIds:['original3']}]});
+assert.equal(doc.system.advancement.length,2);`],{cwd:temp,stdio:'pipe'});
   await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/summon-provider.mjs'),path.join(temp,'original-summon-fixture.mjs'));
   execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
 import {createSummonAssembler} from '@arcanedesk/auto2014-catalogue/summons';

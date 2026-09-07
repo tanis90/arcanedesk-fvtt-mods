@@ -44,3 +44,21 @@ test('class and subclass policies retain their existing distinct advancement typ
   tools.normalizeActorStudioSpellLimitAdvancements(limits);assert.equal(limits.system.advancement[0].title,'Spells Known');
   assert.throws(()=>createAdvancementTools({}),/mapper/);
 });
+
+test('explicit grant profiles keep complete progression and avoid duplicate grants',()=>{
+  const tools=createAdvancementTools({rewriteUuid,uuidFor:(pack,id)=>`Compendium.prepared.${pack}.Item.${id}`});
+  const original=grant(3,'original3');
+  const doc={system:{description:{value:'Original subclass prose'},advancement:[original,grant(10,'excluded'),{type:'Trait',level:1,configuration:{original:true}},{type:'ItemChoice',level:1,configuration:{}}]}};
+  const profile={levelCap:6,allowedFeatureIds:['original3'],grants:[
+    {id:'newGrant3',level:3,title:'Original early grant',itemIds:['original3']},
+    {id:'newGrant20',level:20,title:'Original final grant',itemIds:['original20'],packName:'spells'}
+  ]};const before=structuredClone(profile);
+  tools.applyGrantProfile(doc,profile);
+  assert.deepEqual(doc.system.advancement.map(a=>a._id??a.type),['grant3','Trait','newGrant20']);
+  assert.equal(doc.system.advancement[2].configuration.items[0].uuid,'Compendium.prepared.spells.Item.original20');
+  assert.equal(doc.system.description.value,'Original subclass prose');assert.deepEqual(profile,before);
+  const once=structuredClone(doc);tools.applyGrantProfile(doc,profile);assert.deepEqual(doc,once);
+  assert.equal(original.configuration.optional,true);
+  assert.throws(()=>tools.applyGrantProfile(doc,{levelCap:6}),/Invalid grant profile/);assert.deepEqual(doc,once);
+  assert.throws(()=>createAdvancementTools({rewriteUuid}).applyGrantProfile(doc,profile),/reference builder/);assert.deepEqual(doc,once);
+});

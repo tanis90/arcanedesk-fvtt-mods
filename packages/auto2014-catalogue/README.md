@@ -80,3 +80,11 @@ The complete internal build uses these same functions. They do not supply class 
 `filterClassAdvancement` and `filterSubclassAdvancement` mutate the supplied document; grant normalization clones its input.
 Pass explicit `levelCap` and `allowedIds` (a Set) to preserve the intended content range, including levels 7–20.
 Class filtering clears starting equipment as in the existing Arcane build; subclass filtering retains only its supported advancement types.
+
+`createAdvancementTools` also accepts `uuidFor(packName, documentId)` for `ensureItemGrant` and `applyGrantProfile`.
+A grant profile supplies `allowedFeatureIds` (array), `levelCap`, and ordered `grants` with `id`, `level`, `title`,
+`itemIds`, and optional `packName` (defaults to `classfeatures`). The source pass retains selected grants,
+traits and scales within its cap; the explicit grants then restore the complete caller-declared progression,
+including higher levels. The cap intentionally applies only to the source pass, not the explicit grant list.
+Existing grants at the same level containing all requested IDs are retained instead of duplicated.
+No concrete subclass grant tables or feature descriptions are included in this API.
