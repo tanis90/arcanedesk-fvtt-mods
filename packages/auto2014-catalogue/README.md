@@ -88,3 +88,13 @@ traits and scales within its cap; the explicit grants then restore the complete 
 including higher levels. The cap intentionally applies only to the source pass, not the explicit grant list.
 Existing grants at the same level containing all requested IDs are retained instead of duplicated.
 No concrete subclass grant tables or feature descriptions are included in this API.
+
+`applyMartialClassProfile` accepts `allowedFeatureIds`, `levelCap`, ordered `grants`, a caller-owned
+`choice` advancement template, `styleIds`, optional `img`, and optional `choiceBasedLevel` (default false).
+It preserves HP advancement, filters source grants, restores declared grants, replaces source choices with the
+provided choice and mapped style pool, and clears starting equipment. `choiceBasedLevel` infers absent levels
+from the first configured choice; otherwise the source level defaults to 1.
+`applyStyleSubclassProfile` accepts `allowedFeatureIds`, `levelCap`, `styleIds` and optional `img`;
+it rewrites existing choices and retains selected grants, traits and scales without injecting new choices.
+Both mutate the supplied document and use the factory's `uuidFor`; profiles and source advancement objects are not mutated.
+Concrete class IDs, grant tables, hints and choice titles remain caller inputs.

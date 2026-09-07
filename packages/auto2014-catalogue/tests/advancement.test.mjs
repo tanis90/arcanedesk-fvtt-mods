@@ -62,3 +62,32 @@ test('explicit grant profiles keep complete progression and avoid duplicate gran
   assert.throws(()=>tools.applyGrantProfile(doc,{levelCap:6}),/Invalid grant profile/);assert.deepEqual(doc,once);
   assert.throws(()=>createAdvancementTools({rewriteUuid}).applyGrantProfile(doc,profile),/reference builder/);assert.deepEqual(doc,once);
 });
+
+test('martial profiles preserve HP, complete grants, choice templates and source documents',()=>{
+  const tools=createAdvancementTools({rewriteUuid,uuidFor:(pack,id)=>`Compendium.prepared.${pack}.Item.${id}`});
+  const input={system:{description:{value:'Original training prose'},startingEquipment:['original'],advancement:[{type:'HitPoints',level:99},grant(1,'original1'),grant(9,'excluded'),{type:'ItemChoice',configuration:{choices:{1:{count:1}}}}]}};
+  const choice={_id:'originalChoice',type:'ItemChoice',level:2,title:'Original choice',hint:'Original hint',configuration:{choices:{2:{count:1}},pool:[],restriction:{type:'class',subtype:'fightingStyle'}},value:{added:{},replaced:{}}};
+  const profile={allowedFeatureIds:['original1'],levelCap:6,grants:[{id:'originalFinal',level:20,title:'Original final grant',itemIds:['original20']}],choice,styleIds:['originalStyle'],img:'icons/svg/book.svg'};
+  const before=structuredClone(profile),old=input.system.advancement;
+  tools.applyMartialClassProfile(input,profile);
+  assert.equal(input.system.advancement[0].level,99);
+  assert.deepEqual(input.system.advancement.map(a=>a.type),['HitPoints','ItemGrant','ItemGrant','ItemChoice']);
+  assert.equal(input.system.advancement[2].level,20);
+  assert.equal(input.system.advancement[3].configuration.pool[0].uuid,'Compendium.prepared.classfeatures.Item.originalStyle');
+  assert.equal(input.system.description.value,'Original training prose');assert.deepEqual(input.system.startingEquipment,[]);
+  assert.deepEqual(profile,before);assert.equal(old.length,4);
+  const once=structuredClone(input);tools.applyMartialClassProfile(input,profile);assert.deepEqual(input,once);
+});
+
+test('style subclass rewrites existing choices with inferred levels without adding grants',()=>{
+  const tools=createAdvancementTools({rewriteUuid,uuidFor:(pack,id)=>`Compendium.prepared.${pack}.Item.${id}`});
+  const original={type:'ItemChoice',configuration:{choices:{10:{count:1}},pool:[{uuid:'original'}]}};
+  const doc={system:{advancement:[original,grant(18,'excluded'),{type:'Trait',level:1},{type:'HitPoints',level:1}]}};
+  tools.applyStyleSubclassProfile(doc,{allowedFeatureIds:[],levelCap:20,styleIds:['originalStyle'],img:'icons/svg/book.svg'});
+  assert.deepEqual(doc.system.advancement.map(a=>a.type),['ItemChoice','Trait']);
+  assert.equal(doc.system.advancement[0].level,10);assert.equal(doc.system.advancement[0].configuration.allowDrops,false);
+  assert.equal(doc.system.advancement[0].configuration.pool[0].uuid,'Compendium.prepared.classfeatures.Item.originalStyle');
+  assert.equal(original.level,undefined);
+  tools.applyStyleSubclassProfile(doc,{allowedFeatureIds:[],levelCap:6,styleIds:['originalStyle']});
+  assert.deepEqual(doc.system.advancement.map(a=>a.type),['Trait']);
+});
