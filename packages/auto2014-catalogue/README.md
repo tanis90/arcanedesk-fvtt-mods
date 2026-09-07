@@ -269,3 +269,14 @@ spell-grant progression and cloned source behavior retain the existing policy. R
 complete descriptions must be nonempty; preparation fails if they are missing. The half-elf
 source matching pattern is a reviewed caller policy, not arbitrary downloaded configuration.
 These functions prepare documents only and do not update existing world Actors.
+
+### Class choice preparation
+
+`./class-choices` exports `createClassChoiceTools({uuidFor, bindings})`. Bindings provide
+source identities, display text and explicit metamagic/affinity pools; see the original fixture.
+The returned methods retain existing barbarian choice cleanup, storm grant correction,
+fighting-style replacement, sorcerer choices and ranger improvement preparation.
+No source descriptions or option lists are bundled. Existing level progression and duplicate
+handling are preserved; ranger's level-six grant is appended on each call, so apply it once
+to fresh source input rather than repeatedly treating it as an idempotent migration.
+These methods prepare documents offline and do not alter world Actors.
