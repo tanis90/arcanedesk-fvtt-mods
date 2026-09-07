@@ -112,6 +112,13 @@ import {createAdvancementTools,resolveOptionRecipe} from '@arcanedesk/auto2014-c
 const calls=createAdvancementTools({rewriteUuid:value=>value,uuidFor:(pack,id)=>'Compendium.original.'+pack+'.Item.'+id});
 const result=resolveOptionRecipe({$call:'abilityChoiceAdvancement',args:['OriginalChoice1','Original choice',['str','dex']]},{calls});
 assert.deepEqual(result.configuration.locked,['con','int','wis','cha']);assert.equal(result._id,'OriginalChoice1');`],{cwd:temp,stdio:'pipe'});
+  await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/character-option-bindings.mjs'),path.join(temp,'original-option-fixture.mjs'));
+  execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
+import {createCharacterOptionTools} from '@arcanedesk/auto2014-catalogue/character-options';
+import {originalOptionBindings} from './original-option-fixture.mjs';
+const api=createCharacterOptionTools({moduleId:'original',uuidFor:(pack,id)=>'Compendium.original.'+pack+'.Item.'+id,bindings:originalOptionBindings()});
+const doc={_id:'OriginalFeat',name:'Original feat',system:{description:{value:'Original prose'}}};
+api.normalizeFeat(doc);assert.equal(doc.flags.original.automation,'static-advancement');assert.equal(doc.system.description.value,'Original prose');`],{cwd:temp,stdio:'pipe'});
   await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/summon-provider.mjs'),path.join(temp,'original-summon-fixture.mjs'));
   execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
 import {createSummonAssembler} from '@arcanedesk/auto2014-catalogue/summons';

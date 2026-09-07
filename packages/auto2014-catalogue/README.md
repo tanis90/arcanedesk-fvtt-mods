@@ -216,3 +216,19 @@ function; array entries of `{$spread: value}` expand a resolved array. Unknown o
 and unresolved names fail. Only supply reviewed constructors and bindings; this resolver
 is not a sandbox for arbitrary functions. Referenced pools retain their identity, matching
 existing constructor behavior. There is no dynamic code evaluation or content download.
+
+### Character options
+
+`./character-options` exports `createCharacterOptionTools({moduleId, uuidFor, bindings})`.
+It prepares backgrounds, feats and basic equipment using caller-supplied source labels,
+identity overrides, static effects and advancement documents. Bindings are snapshotted;
+see the original test fixture for the required fields. No rule descriptions, translations,
+source pack documents or third-party artwork are supplied by this entry.
+
+Background preparation retains traits and stable feature grants, recording deferred items
+for later handling. Feat preparation clears incomplete imported activities and applies only
+explicit effects/advancements. Neither operation claims additional combat automation.
+Descriptions are preserved. Passive effect origins use the caller's `passiveEffectPack`;
+the internal build preserves its historical origin policy during this migration.
+`removeEmptyEffects` only tests changes/statuses, retaining the existing narrow cleanup rule.
+These mutating preparation helpers do not install modules or update world Actors.
