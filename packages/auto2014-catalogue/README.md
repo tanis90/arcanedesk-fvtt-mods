@@ -245,3 +245,13 @@ The API returns `normalizePhbRacialTrait`, `normalizeDragonbornBreath`, `addResi
 and `addBooleanFlagEffect`. Existing resource, scaling and runtime marker policies are preserved;
 no rule descriptions, source documents or artwork are bundled. Methods prepare documents offline,
 not world Actors. This extraction does not certify new runtime QA or expand automation support.
+
+### Supplemental racial traits
+
+`./supplement-racial-traits` exports `createSupplementRacialTools({moduleId, uuidFor, bindings})`.
+Caller bindings provide source identities, identifier references, display labels and source
+metadata; see the original fixture for the required shape. The API returns Aasimar and Kender
+normalizers plus their existing self-utility/revelation/fear helpers. It preserves effect
+lifetimes, declared-rider markers and resource behavior. Kender remains builder support;
+this preparation does not claim new combat automation. Documents and descriptions remain
+caller content. No installation or world mutation is performed.
