@@ -113,3 +113,16 @@ Normalization mutates supplied documents/activities; it does not contact Foundry
 `consumption.spellSlot = true`, and an existing scaling configuration when present.
 Template prompts are enabled only for measured templates outside automation-only activities.
 These APIs describe existing build behavior; caller policy remains responsible for correct gameplay decisions.
+
+## Martial feature normalization
+
+`@arcanedesk/auto2014-catalogue/martial-features` exports `createMartialFeatureTools({moduleId, uuidFor, content})`.
+It returns `ensureUtilityActivity`, `normalizeFighterAutomation`, `normalizeMonkAutomation` and `normalizeRogueAutomation`.
+These preserve existing Arcane mechanics for the matched features; they mutate caller documents but do not run Foundry workflows.
+They do not implement every feature of those classes.
+
+`content` supplies `fighterImages` keyed by identifier, `monkImages` and `rogueImages` keyed by document ID,
+`monk: {profUseIds, frightenFeatureId, effectId, effectName}`, and
+`rogue: {sneakAttackFeatureId, damageActivityId, legacyEffectId}`.
+Bindings are snapshotted; concrete source IDs, effect prose and icon mappings are not bundled here.
+The internal build uses these same functions with its private bindings. Caller descriptions and spent resource counts are retained.
