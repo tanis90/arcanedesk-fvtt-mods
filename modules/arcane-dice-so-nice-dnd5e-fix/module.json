@@ -1,0 +1,40 @@
+{
+  "id": "arcane-dice-so-nice-dnd5e-fix",
+  "title": "Arcane Dice So Nice DND5E Fix",
+  "description": "Local compatibility patch for Dice So Nice v5.2.5 with dnd5e D20Die rolls.",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13.351"
+  },
+  "authors": [
+    {
+      "name": "Arcane Desk"
+    }
+  ],
+  "relationships": {
+    "requires": [
+      {
+        "id": "dice-so-nice",
+        "type": "module",
+        "compatibility": {
+          "minimum": "5.2.5"
+        }
+      }
+    ],
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system",
+        "compatibility": {
+          "minimum": "5.3.3"
+        }
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/dice-so-nice-dnd5e-dd-fix.js"
+  ],
+  "license": "LICENSE",
+  "url": "https://github.com/tanis90/arcanedesk-fvtt-mods"
+}
