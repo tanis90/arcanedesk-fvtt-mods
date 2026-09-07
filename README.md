@@ -30,6 +30,8 @@ The catalogue's `./summons` entry assembles summon Actors from caller-provided c
 trusted validation data; it includes an original training fixture for independent verification.
 The [Foundry pack builder](packages/foundry-pack-builder/README.md) writes caller-supplied documents into
 compendiums and assembles new module directories. It shares the writer used by the complete internal build.
+Its CLI assembles prepared JSON content bundles into new module directories; see the pack builder's
+README for the `arcane-build-module` input format and source-checkout command.
 
 ## Contributions and licensing
 

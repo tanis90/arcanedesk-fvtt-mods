@@ -56,7 +56,15 @@ const input=trainingSummonInput();
 const {actors}=createSummonAssembler(input.contracts).assembleSummonProvider(input.provider);
 assert.equal(actors.length,1);assert.equal(actors[0]._id,'originalActor001');
 const result=await writeModule({directory:'probe-summon-module',manifest:{id:'arcane-dnd5e-2014-automation',version:'0.0.0',packs:[{name:'summons',path:'packs/summons',type:'Actor'}]},documents:{summons:actors}});
-assert.equal(result.packs[0].records,2);`],{cwd:temp,stdio:'pipe'});
+  assert.equal(result.packs[0].records,2);`],{cwd:temp,stdio:'pipe'});
+  execFileSync(process.execPath,['--input-type=module','-e',`import fs from 'node:fs/promises';
+import {createModuleBundle} from '@arcanedesk/foundry-pack-builder';
+const bundle=createModuleBundle({manifest:{id:'original-cli-probe',version:'1.0.0',packs:[{name:'items',path:'packs/items',type:'Item'}]},documents:{items:[{_id:'originalCli001',name:'Original CLI probe',effects:[]}]},files:{'original.txt':'Original fixture'}});
+await fs.writeFile('probe-bundle.json',JSON.stringify(bundle));`],{cwd:temp,stdio:'pipe'});
+  await fs.access(path.join(temp,'node_modules/.bin',process.platform==='win32'?'arcane-build-module.cmd':'arcane-build-module'));
+  const cliResult=JSON.parse(execFileSync(process.execPath,[path.join(temp,process.platform==='win32'?'node_modules/@arcanedesk/foundry-pack-builder/src/cli.mjs':'node_modules/.bin/arcane-build-module'),'--input','probe-bundle.json','--out','probe-cli-module'],{cwd:temp,encoding:'utf8'}));
+  assert.equal(cliResult.moduleId,'original-cli-probe');
+  assert.equal(cliResult.packs[0].records,1);
   console.log(JSON.stringify(packedPackages.map(packed=>({name:packed.name,version:packed.version,files:packed.files.length,packedBytes:packed.size,installedOutsideWorkspace:true}))));
 } finally {
   // mkdtemp created this exact directory for this invocation; never remove caller paths.
