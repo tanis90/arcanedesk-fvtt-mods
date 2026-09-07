@@ -34,6 +34,15 @@ test('unknown or absent identifiers cannot silently receive a recipe',()=>{
   assert.throws(()=>composeRegisteredSpell({name:'Bless'}),/No compiled spell recipe/);
 });
 
+test('placed-point spell composition matches complete-pack animation finalization',()=>{
+  const input={_id:'originalStep001',name:'Original step fixture',type:'spell',img:'icons/svg/book.svg',
+    system:{identifier:'misty-step',description:{value:'Original caller step description.'},source:{rules:'2014'}}};
+  const {item}=composeRegisteredSpell(input);
+  assert.equal(item.flags.autoanimations,undefined);
+  assert.equal(item.system.description.value,input.system.description.value);
+  assert(Object.keys(item.system.activities).length>0);
+});
+
 test('packaged per-spell scripts preserve the shipped baseline bytes',()=>{
   const expected={
     'banishing-smite':'c92c269b4a5332cfcf55d57f3caa310667f5e5eba707e48bface893de5bc2c8b',

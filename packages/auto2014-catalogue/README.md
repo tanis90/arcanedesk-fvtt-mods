@@ -22,8 +22,11 @@ No full spell descriptions, translation corpus or compendium database is supplie
 
 This is offline composition, not a complete module installer or an Actor update API. Runtime and
 companion scripts must be packaged and loaded correctly; generated summon profiles also need the
-existing actor builder and a full profile provider. Internal profiles/options and subsequent animation normalization still belong
-to the complete module build. These limitations must be resolved before a public installable release.
+existing actor builder and a full profile provider. Composition applies the same disabled-animation
+placeholder cleanup used by the complete build. Internal CI reconstructs every registered spell from
+the generated compendium and compares every field with this public composition API; missing or
+duplicate recipes fail. This checks spell output parity, not completeness of the public installer.
+Full profile assembly and installation remain to be resolved before a public installable release.
 
 From the repository root on Node 24: `npm ci`, then `npm run verify`.
 Verification tests every registered recipe's content boundary, packs the source packages,
