@@ -311,3 +311,27 @@ uses the shared activity interaction policy. Source mappings and content are not
 Animation cleanup removes only disabled, noncustomized placeholders from spell documents;
 the registered spell composer and complete build both use this same function. These helpers
 mutate offline build inputs, preserve caller descriptions and do not install or update Actors.
+
+### Explicit local content sources
+
+`./content-sources` exports `readContentSources({root, manifest})`. The manifest is
+`{schemaVersion: 1, sources: {items: {path: "content/items.jsonl", format: "jsonl", sha256: "..."}}}`.
+Supply a lowercase SHA256 of each original file. Supported formats are `jsonl`
+(document objects, one per nonblank line), `json-documents` (an object containing a
+`documents` array), and `json-entries` (an object containing an `entries` object,
+returned as a Map). Empty arrays and duplicate document IDs are preserved; domain
+selection, duplicate resolution and automation compilation belong to the caller.
+
+Paths are relative to the supplied local root. Traversal, linked inputs, case-colliding
+paths, unknown declarations, changed hashes and malformed content fail closed.
+Limits are 128 sources, 64 MiB per file and 512 MiB total. The loader reads only listed
+files, performs no network access or writes, and never executes content scripts.
+Parsing errors identify the source key without quoting caller content.
+
+The result contains `sources` keyed as declared and a `receipt` with sorted source
+paths, formats, hashes, byte counts, record counts, total bytes and `inputSha256` over
+the receipt's source list. The fingerprint is independent of root location and
+manifest key order. It identifies the inputs; it is not a publisher signature, a
+license check or proof of complete module validation. Keep sensitive manifests and
+receipts local. This package supplies no third-party input files, production source
+manifest or translation data. Reading raw documents alone does not assemble a module.

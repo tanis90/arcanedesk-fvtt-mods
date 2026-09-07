@@ -187,6 +187,14 @@ import {createActivityTools} from '@arcanedesk/auto2014-catalogue/activities';
 const api=createItemPreparationTools({rewriteString:x=>x,activityTools:createActivityTools({moduleId:'original',spellAutomationProfiles:{version:1,defaults:{}}}),bindings:{identifiers:{OriginalItem:'original-item'},itemUseAliases:{},singleTargetSpellIdentifiers:[]}});
 const doc={_id:'OriginalItem',type:'spell',system:{description:{value:'Original prose'}},flags:{autoanimations:{isEnabled:false}}};
 api.normalizeIdentifiers(doc);normalizeSpellAnimationMetadata(doc);assert.equal(doc.system.identifier,'original-item');assert.equal(doc.system.description.value,'Original prose');assert.equal(doc.flags.autoanimations,undefined);`],{cwd:temp,stdio:'pipe'});
+  execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {readContentSources} from '@arcanedesk/auto2014-catalogue/content-sources';
+const text=JSON.stringify({_id:'OriginalInput001',system:{description:{value:'Original caller prose'}}});
+await fs.writeFile('original-content.jsonl',text,{flag:'wx'});
+const result=await readContentSources({root:process.cwd(),manifest:{schemaVersion:1,sources:{items:{path:'original-content.jsonl',format:'jsonl',sha256:createHash('sha256').update(text).digest('hex')}}}});
+assert.equal(result.sources.items[0].system.description.value,'Original caller prose');assert.equal(result.receipt.sources[0].count,1);`],{cwd:temp,stdio:'pipe'});
   console.log(JSON.stringify(packedPackages.map(packed=>({name:packed.name,version:packed.version,files:packed.files.length,packedBytes:packed.size,installedOutsideWorkspace:true}))));
 } finally {
   // mkdtemp created this exact directory for this invocation; never remove caller paths.
