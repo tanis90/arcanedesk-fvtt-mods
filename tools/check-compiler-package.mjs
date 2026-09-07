@@ -78,6 +78,13 @@ import {originalBarbarianBindings as content} from './original-barbarian-fixture
 const tools=createBarbarianFeatureTools({moduleId:'original',uuidFor:(pack,id)=>'Compendium.original.'+pack+'.Item.'+id,content});
 const doc={_id:content.ids.rage,effects:[],system:{activities:{}}};tools.normalizeBarbarianAutomation(doc);
 assert.equal(doc.effects[0].changes.length,6);assert.equal(doc.effects[0].name,content.text.rageName);`],{cwd:temp,stdio:'pipe'});
+  await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/class-feature-bindings.mjs'),path.join(temp,'original-class-fixture.mjs'));
+  execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
+import {createClassFeatureAdapters} from '@arcanedesk/auto2014-catalogue/class-feature-adapters';
+import {originalClassBindings as content} from './original-class-fixture.mjs';
+const tools=createClassFeatureAdapters({moduleId:'original',uuidFor:(pack,id)=>'Compendium.original.'+pack+'.Item.'+id,content});
+const doc={_id:'originalArmor',effects:[],system:{activities:{}}};tools.normalizeWarlockAutomation(doc);
+assert.equal(doc.effects[0].changes[0].value,'mage');assert.equal(doc.system.activities.originalActivity.consumption.spellSlot,false);`],{cwd:temp,stdio:'pipe'});
   await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/summon-provider.mjs'),path.join(temp,'original-summon-fixture.mjs'));
   execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
 import {createSummonAssembler} from '@arcanedesk/auto2014-catalogue/summons';

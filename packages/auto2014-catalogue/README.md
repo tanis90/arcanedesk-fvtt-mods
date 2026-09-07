@@ -139,3 +139,18 @@ The returned `normalizeBarbarianAutomation` mutates caller documents and preserv
 `appendBarbarianWorkflowNote` appends caller prose once; rider helpers do not consume another rage.
 Bindings are copied at construction. These functions prepare documents and do not execute Foundry workflows.
 Utility Activity creation now lives in the shared activities entry; the martial-features entry retains its existing returned helper.
+
+## Warlock and Ranger adapters
+
+`@arcanedesk/auto2014-catalogue/class-feature-adapters` exports `createClassFeatureAdapters({moduleId, uuidFor, content})`.
+Its `normalizeWarlockAutomation` and `normalizeRangerTceFeatureAutomation` methods preserve the existing
+Armor of Shadows, source-link repair, Favored Foe, Deft Explorer/Canny and Roving preparation behavior.
+They do not implement every feature of either class.
+
+`content` supplies `warlockImages`, `rangerImages`,
+`warlock: {pactMagicId, armorOfShadowsId, activityId, activityName, effectName}`, and
+`ranger: {favoredFoeFeatureId, deftExplorerFeatureId, cannyFeatureId, rovingFeatureId}`.
+Bindings are snapshotted. Concrete private IDs, names and icon maps remain caller inputs.
+The malformed classpack link cleanup is limited to the bound Pact Magic document and preserves surrounding text.
+Normalization mutates supplied documents; it does not run Foundry workflows or update existing world Actors.
+The activities entry also exposes `keepOnlyActivity`, preserving the selected Activity's stable ID.
