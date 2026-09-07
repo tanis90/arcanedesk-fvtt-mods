@@ -92,6 +92,12 @@ import {originalEffectBindings as bindings} from './original-effect-fixture.mjs'
 const tools=createClassEffectTools({moduleId:'original',uuidFor:(pack,id)=>'Compendium.original.'+pack+'.Item.'+id,bindings});
 const doc={_id:'originalDoc',system:{identifier:'font-of-inspiration'}};tools.normalizeFontOfInspiration(doc);
 assert.equal(doc.effects[0].changes[0].key,'flags.original.bardicInspirationRecovery');`],{cwd:temp,stdio:'pipe'});
+  execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
+import {createSpellContentTools} from '@arcanedesk/auto2014-catalogue/spell-content';
+const tools=createSpellContentTools({moduleId:'original',actorStudioModuleId:'original-studio',maxPreparedSpellLevel:3,supportedSpellcastingClasses:[],actorStudioSubclassSpellLists:{},arcaneOwnedSpellDescriptionIds:[]});
+const doc={_id:'originalText',type:'spell',name:'Practice',system:{description:{value:'<p>Original English text.</p>'}}};
+tools.applyBilingualSpellText(doc,new Map([['originalText',{name:'练习',description:'<p>原创文本。</p>'}]]));
+assert.equal(doc.name,'练习 Practice');assert(doc.system.description.value.includes('<p>Original English text.</p>'));assert(doc.system.description.value.includes('<p>原创文本。</p>'));`],{cwd:temp,stdio:'pipe'});
   await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/summon-provider.mjs'),path.join(temp,'original-summon-fixture.mjs'));
   execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
 import {createSummonAssembler} from '@arcanedesk/auto2014-catalogue/summons';
