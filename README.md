@@ -21,8 +21,10 @@ npm run verify
 `dist/` contains one versioned ZIP per module and an `artifacts.json` digest manifest.
 Tests check the adapters with controlled Foundry mocks; they do not claim a new live-world certification.
 
-Auto 2014 is not included in this initial public export. Its source/content separation and provenance review
-are in progress. This repository does not distribute its existing full-text compendiums.
+Auto 2014's shared compiler is available under [packages/auto2014-compiler](packages/auto2014-compiler/README.md).
+Its canonical runtime source is available under [packages/auto2014-runtime](packages/auto2014-runtime/README.md).
+The complete Foundry automation module and spell catalogue remain under source/content separation and provenance
+review. This repository does not distribute the existing full-text compendiums.
 
 ## Contributions and licensing
 
