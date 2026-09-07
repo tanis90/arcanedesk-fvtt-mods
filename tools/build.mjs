@@ -17,11 +17,11 @@ for(const id of (await fs.readdir(path.join(root,'modules'))).sort()) {
       const full=path.join(base,name), key=rel+name, st=await fs.lstat(full);
       if(st.isSymbolicLink()) throw Error('Symlink in module');
       if(st.isDirectory()) await collect(full,key+'/');
-      else files[key]=[new Uint8Array(await fs.readFile(full)),{mtime:new Date('2000-01-01T00:00:00Z')}];
+      else files[key]=[new Uint8Array(await fs.readFile(full)),{mtime:new Date(2000,0,1,0,0,0)}];
     }
   }
   await collect(dir);
-  for(const name of ['LICENSE','NOTICE']) files[name]=[new Uint8Array(await fs.readFile(path.join(root,name))),{mtime:new Date('2000-01-01T00:00:00Z')}];
+  for(const name of ['LICENSE','NOTICE']) files[name]=[new Uint8Array(await fs.readFile(path.join(root,name))),{mtime:new Date(2000,0,1,0,0,0)}];
   const bytes=zipSync(files,{level:9}), name=`${id}-${manifest.version}.zip`;
   await fs.writeFile(path.join(out,name),bytes);
   artifacts.push({id,version:manifest.version,file:name,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')});
