@@ -167,3 +167,20 @@ This is the existing implemented scope, not full automation coverage for every c
 The caller's descriptions and source content are not bundled. Inputs are snapshotted, while matched documents are mutated.
 Font of Inspiration uses the supplied namespace for its recovery flag; the Arcane internal namespace retains its original output.
 These helpers prepare data; live effects and declared riders still rely on the matching runtime.
+
+### Caller-supplied spell content
+
+The `./spell-content` entry exports `createSpellContentTools`. Supply `moduleId`,
+`actorStudioModuleId`, `maxPreparedSpellLevel` (0–9), `supportedSpellcastingClasses`
+(array), `actorStudioSubclassSpellLists` (identifier to level/lists), and
+`arcaneOwnedSpellDescriptionIds` (array of explicit complete-card replacements).
+The factory snapshots these bindings. Its methods prepare bilingual names/descriptions,
+source identity remaps and class/subclass spell-list annotations on caller-owned documents.
+They neither load source packs nor provide translations or redistribution permission.
+
+Descriptions retain supplied HTML; this is not an HTML sanitizer. The existing bilingual
+application only updates a description when both translated and existing descriptions are
+nonempty. Complete-card replacements use the same guard. Callers must separately validate
+required content rather than treating this helper as a completeness check.
+`remapSpellReferences` preserves the legacy recursive string replacement behavior, including
+text fields; use trusted, deliberate identity maps. Methods mutate supplied documents.
