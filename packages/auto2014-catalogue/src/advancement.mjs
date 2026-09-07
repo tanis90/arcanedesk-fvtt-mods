@@ -123,5 +123,58 @@ export function createAdvancementTools({rewriteUuid, excludedFeatureIds: exclude
     // Explicit grants are the full declared progression, independent of source filtering.
     for (const grant of grants) ensureItemGrant(doc, grant);
   }
-  return Object.freeze({ensureItemGrant,applyGrantProfile,collectAdvancementItemIds,collectAdvancementItemChoicePoolIds,normalizeItemGrantAdvancement,filterClassAdvancement,normalizeActorStudioSpellLimitAdvancements,filterSubclassAdvancement});
+  function applyMartialClassProfile(doc, {allowedFeatureIds: allowed, levelCap, grants, choice, styleIds, img, choiceBasedLevel = false}) {
+    const allowedFeatureIds = new Set(allowed);
+    if (img !== undefined) doc.img = img;
+    doc.system.advancement = (doc.system.advancement ?? [])
+      .filter(adv => {
+        const choiceLevel = Number(Object.keys(adv.configuration?.choices ?? {})[0] ?? 0);
+        const level = adv.level ?? (choiceBasedLevel ? choiceLevel : 1);
+        if (adv.type === 'HitPoints') return true;
+        if (['AbilityScoreImprovement', 'Trait', 'ScaleValue', 'Subclass'].includes(adv.type)) return level <= levelCap;
+        if (adv.type !== 'ItemGrant' || level > levelCap) return false;
+        return (adv.configuration?.items ?? []).some(item => allowedFeatureIds.has(item.uuid?.split('.').pop()));
+      })
+      .map(adv => {
+        const copy = clone(adv);
+        if (copy.type === 'ItemGrant') {
+          copy.configuration.items = (copy.configuration.items ?? [])
+            .filter(item => allowedFeatureIds.has(item.uuid?.split('.').pop()))
+            .map(item => ({...item, uuid: uuidFor('classfeatures', item.uuid.split('.').pop())}));
+          copy.configuration.optional = false;
+          copy.configuration.spell = null;
+        }
+        return copy;
+      });
+    for (const grant of grants) ensureItemGrant(doc, grant);
+    const preparedChoice = clone(choice);
+    preparedChoice.configuration.pool = styleIds.map(id => ({uuid: uuidFor('classfeatures', id)}));
+    doc.system.advancement.push(preparedChoice);
+    doc.system.startingEquipment = [];
+  }
+
+  function applyStyleSubclassProfile(doc, {allowedFeatureIds: allowed, levelCap, styleIds, img}) {
+    const allowedFeatureIds = new Set(allowed);
+    if (img !== undefined) doc.img = img;
+    doc.system.advancement = (doc.system.advancement ?? [])
+      .map(adv => {
+        const choiceLevel = Number(Object.keys(adv.configuration?.choices ?? {})[0] ?? 0);
+        const level = adv.level ?? choiceLevel;
+        if (level > levelCap) return null;
+        if (adv.type === 'ItemGrant') return normalizeItemGrantAdvancement(adv, allowedFeatureIds);
+        if (adv.type === 'ItemChoice') {
+          const copy = clone(adv);
+          copy.configuration ??= {};
+          copy.configuration.pool = styleIds.map(id => ({uuid: uuidFor('classfeatures', id)}));
+          copy.configuration.allowDrops = false;
+          copy.configuration.type = 'feat';
+          copy.configuration.spell = null;
+          copy.configuration.restriction = {type: 'class', subtype: 'fightingStyle'};
+          copy.level = level;
+          return copy;
+        }
+        return ['Trait', 'ScaleValue'].includes(adv.type) ? clone(adv) : null;
+      }).filter(Boolean);
+  }
+  return Object.freeze({applyMartialClassProfile,applyStyleSubclassProfile,ensureItemGrant,applyGrantProfile,collectAdvancementItemIds,collectAdvancementItemChoicePoolIds,normalizeItemGrantAdvancement,filterClassAdvancement,normalizeActorStudioSpellLimitAdvancements,filterSubclassAdvancement});
 }

@@ -54,7 +54,13 @@ const doc={system:{advancement:[{type:'ItemGrant',level:20,configuration:{items:
 createAdvancementTools({rewriteUuid:value=>value}).filterClassAdvancement(doc,{levelCap:20,allowedIds:new Set(['original20'])});
 assert.equal(doc.system.advancement.length,1);
 createAdvancementTools({rewriteUuid:value=>value,uuidFor:(pack,id)=>'Compendium.original.'+pack+'.Item.'+id}).applyGrantProfile(doc,{levelCap:20,allowedFeatureIds:['original20'],grants:[{id:'originalExtra',level:3,title:'Original grant',itemIds:['original3']}]});
-assert.equal(doc.system.advancement.length,2);`],{cwd:temp,stdio:'pipe'});
+assert.equal(doc.system.advancement.length,2);
+const training={system:{advancement:[]}};
+const tools=createAdvancementTools({rewriteUuid:value=>value,uuidFor:(pack,id)=>'Compendium.original.'+pack+'.Item.'+id});
+tools.applyMartialClassProfile(training,{allowedFeatureIds:[],levelCap:20,grants:[],styleIds:['originalStyle'],choice:{type:'ItemChoice',level:1,configuration:{}}});
+assert.equal(training.system.advancement.length,1);
+tools.applyStyleSubclassProfile(training,{allowedFeatureIds:[],levelCap:20,styleIds:['originalStyle']});
+assert.equal(training.system.advancement[0].configuration.pool.length,1);`],{cwd:temp,stdio:'pipe'});
   await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/summon-provider.mjs'),path.join(temp,'original-summon-fixture.mjs'));
   execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
 import {createSummonAssembler} from '@arcanedesk/auto2014-catalogue/summons';
