@@ -15,6 +15,7 @@ try {
     assert(packed.files.some(f=>f.path==='NOTICE'));
     assert(packed.files.every(f=>['README.md','package.json','LICENSE','NOTICE'].includes(f.path)||f.path.startsWith('src/')));
   }
+  assert(packedPackages.find(p=>p.name==='@arcanedesk/auto2014-catalogue').files.some(f=>f.path==='src/advancement.mjs'));
   const catalogue=packedPackages.find(p=>p.name==='@arcanedesk/auto2014-catalogue');
   assert(catalogue);
   assert(!catalogue.files.some(f=>f.path.endsWith('/profiles.mjs')),'Full summon profiles must not be published');
@@ -47,6 +48,11 @@ for(const id of spellAutomationCompiledIds){const input={_id:'catalogueTest001',
 import {writeModule} from '@arcanedesk/foundry-pack-builder';
 const result=await writeModule({directory:'probe-module',manifest:{id:'probe-module',version:'1.0.0',packs:[{name:'items',path:'packs/items',type:'Item'}]},documents:{items:[{_id:'originalProbe001',name:'Original probe',effects:[]}]}});
   assert.equal(result.packs[0].records,1);`],{cwd:temp,stdio:'pipe'});
+  execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
+import {createAdvancementTools} from '@arcanedesk/auto2014-catalogue/advancement';
+const doc={system:{advancement:[{type:'ItemGrant',level:20,configuration:{items:[{uuid:'Compendium.original.items.Item.original20'}]}}]}};
+createAdvancementTools({rewriteUuid:value=>value}).filterClassAdvancement(doc,{levelCap:20,allowedIds:new Set(['original20'])});
+assert.equal(doc.system.advancement.length,1);`],{cwd:temp,stdio:'pipe'});
   await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/summon-provider.mjs'),path.join(temp,'original-summon-fixture.mjs'));
   execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
 import {createSummonAssembler} from '@arcanedesk/auto2014-catalogue/summons';
