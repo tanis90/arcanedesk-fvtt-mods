@@ -61,6 +61,11 @@ tools.applyMartialClassProfile(training,{allowedFeatureIds:[],levelCap:20,grants
 assert.equal(training.system.advancement.length,1);
 tools.applyStyleSubclassProfile(training,{allowedFeatureIds:[],levelCap:20,styleIds:['originalStyle']});
 assert.equal(training.system.advancement[0].configuration.pool.length,1);`],{cwd:temp,stdio:'pipe'});
+  execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
+import {createActivityTools} from '@arcanedesk/auto2014-catalogue/activities';
+const tools=createActivityTools({moduleId:'original-module',spellAutomationProfiles:{version:1}});
+const activity={};tools.normalizeSelfItemUseActivity(activity);
+assert.equal(activity.target.affects.type,'self');assert.equal(activity.consumption.targets[0].value,'1');`],{cwd:temp,stdio:'pipe'});
   await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/summon-provider.mjs'),path.join(temp,'original-summon-fixture.mjs'));
   execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
 import {createSummonAssembler} from '@arcanedesk/auto2014-catalogue/summons';

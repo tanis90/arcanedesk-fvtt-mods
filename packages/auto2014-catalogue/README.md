@@ -98,3 +98,18 @@ from the first configured choice; otherwise the source level defaults to 1.
 it rewrites existing choices and retains selected grants, traits and scales without injecting new choices.
 Both mutate the supplied document and use the factory's `uuidFor`; profiles and source advancement objects are not mutated.
 Concrete class IDs, grant tables, hints and choice titles remain caller inputs.
+
+## Activity interaction contracts
+
+`@arcanedesk/auto2014-catalogue/activities` exports `createActivityTools({moduleId, spellAutomationProfiles})`.
+The factory snapshots caller policy. Its helpers infer input/target/range, normalize template interaction flags,
+configure automated dialogs, and prepare self-use or creature-target activities. The internal full build uses the same functions.
+The policy contains a `version`, optional `defaults`, and optional `spells` keyed by caller identifiers; an individual
+spell may override `templateTargets`, `autoTargetType`, `areaBehavior`, `implementation` or per-activity policy.
+The source package supplies no concrete spell policy table or content descriptions.
+
+Normalization mutates supplied documents/activities; it does not contact Foundry or execute a workflow.
+`normalizeSelfItemUseActivity` preserves the existing Arcane contract: one item use, self targeting,
+`consumption.spellSlot = true`, and an existing scaling configuration when present.
+Template prompts are enabled only for measured templates outside automation-only activities.
+These APIs describe existing build behavior; caller policy remains responsible for correct gameplay decisions.
