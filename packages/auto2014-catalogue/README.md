@@ -255,3 +255,17 @@ normalizers plus their existing self-utility/revelation/fear helpers. It preserv
 lifetimes, declared-rider markers and resource behavior. Kender remains builder support;
 this preparation does not claim new combat automation. Documents and descriptions remain
 caller content. No installation or world mutation is performed.
+
+### Race documents
+
+`./races` exports `createRaceTools({moduleId, uuidFor, innateSpellGrant, bindings})`.
+Use the shared advancement factory's innate grant constructor. Bindings supply identity
+maps, source references, titles, selection hints and complete descriptions; see the original
+fixture for the shape. The helper never fetches or bundles source descriptions.
+
+The existing Aasimar, half-elf and Kender normalization and derived Levistus/Stygian
+constructors are exposed together with `normalizeRaceAutomation`. Choices, stable IDs,
+spell-grant progression and cloned source behavior retain the existing policy. Required
+complete descriptions must be nonempty; preparation fails if they are missing. The half-elf
+source matching pattern is a reviewed caller policy, not arbitrary downloaded configuration.
+These functions prepare documents only and do not update existing world Actors.
