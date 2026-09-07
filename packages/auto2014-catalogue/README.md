@@ -280,3 +280,19 @@ No source descriptions or option lists are bundled. Existing level progression a
 handling are preserved; ranger's level-six grant is appended on each call, so apply it once
 to fresh source input rather than repeatedly treating it as an idempotent migration.
 These methods prepare documents offline and do not alter world Actors.
+
+### Dragonlance content preparation
+
+`./dragonlance` exports `createDragonlanceTools`. Supply `moduleId`, `uuidFor`,
+`backgroundIdentifier`, `featIdentifier`, `collectDeferredBackgroundItems`,
+`abilityChoiceAdvancement` and `bindings`. The original fixture documents the binding
+shape: source labels, full background hint, source pack reference, background-to-feat
+pairs, ASI pairs and explicit prerequisite/resource identity lists. Bindings are copied.
+
+Returned methods prepare background/feat documents in place and rewrite source feat
+references recursively. Background grants retain level zero and cloned Trait advancements.
+Feats retain builder/advancement support: incomplete donor activities are cleared, and
+configured resource counters start unspent. Apply to fresh build inputs, not live Actors.
+Descriptions remain caller content; reference rewriting is not HTML sanitization or a
+redistribution-rights check. No source descriptions, identity lists or licensed content
+are supplied by this entry point. These helpers do not form a complete installable module.

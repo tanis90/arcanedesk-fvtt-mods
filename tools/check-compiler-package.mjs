@@ -169,6 +169,15 @@ await fs.writeFile('probe-bundle.json',JSON.stringify(bundle));`],{cwd:temp,stdi
   const cliResult=JSON.parse(execFileSync(process.execPath,[path.join(temp,process.platform==='win32'?'node_modules/@arcanedesk/foundry-pack-builder/src/cli.mjs':'node_modules/.bin/arcane-build-module'),'--input','probe-bundle.json','--out','probe-cli-module'],{cwd:temp,encoding:'utf8'}));
   assert.equal(cliResult.moduleId,'original-cli-probe');
   assert.equal(cliResult.packs[0].records,1);
+  await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/dragonlance-bindings.mjs'),path.join(temp,'original-campaign-fixture.mjs'));
+  execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
+import {createDragonlanceTools} from '@arcanedesk/auto2014-catalogue/dragonlance';
+import {createAdvancementTools} from '@arcanedesk/auto2014-catalogue/advancement';
+import {originalCampaignBindings} from './original-campaign-fixture.mjs';
+const uuidFor=(pack,id)=>'Compendium.original.'+pack+'.Item.'+id;
+const api=createDragonlanceTools({moduleId:'original',uuidFor,bindings:originalCampaignBindings(),backgroundIdentifier:()=> 'original-background',featIdentifier:()=> 'original-feat',collectDeferredBackgroundItems:()=>[],abilityChoiceAdvancement:createAdvancementTools({rewriteUuid:x=>x,uuidFor}).abilityChoiceAdvancement});
+const doc={_id:'TrainingBackground',system:{description:{value:'Original prose'}}};
+api.normalizeDragonlanceBackground(doc);assert.equal(doc.system.advancement[0].level,0);assert.equal(doc.system.advancement[0].hint,'Choose the reward earned in training.');assert.equal(doc.system.description.value,'Original prose');`],{cwd:temp,stdio:'pipe'});
   console.log(JSON.stringify(packedPackages.map(packed=>({name:packed.name,version:packed.version,files:packed.files.length,packedBytes:packed.size,installedOutsideWorkspace:true}))));
 } finally {
   // mkdtemp created this exact directory for this invocation; never remove caller paths.
