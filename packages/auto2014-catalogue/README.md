@@ -69,3 +69,14 @@ Recipe support and historical acceptance metadata describe the original implemen
 manual fallbacks. Successful compilation does not certify a new Foundry setup or establish that every
 recipe is fully automated. Installation, matching companion data and runtime QA remain separate gates.
 Package versions follow the existing module/compiler baseline; no npm registry release is implied.
+
+## Shared advancement transforms
+
+The `@arcanedesk/auto2014-catalogue/advancement` entry exports `createAdvancementTools({rewriteUuid, excludedFeatureIds})`.
+The caller supplies its reference mapper and optional exclusion IDs; the returned tools collect grant/choice references,
+normalize grants, filter class/subclass advancement and normalize Actor Studio spell-limit labels.
+The complete internal build uses these same functions. They do not supply class descriptions, class-specific rules or source IDs.
+
+`filterClassAdvancement` and `filterSubclassAdvancement` mutate the supplied document; grant normalization clones its input.
+Pass explicit `levelCap` and `allowedIds` (a Set) to preserve the intended content range, including levels 7–20.
+Class filtering clears starting equipment as in the existing Arcane build; subclass filtering retains only its supported advancement types.
