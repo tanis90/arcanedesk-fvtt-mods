@@ -36,3 +36,39 @@ This is a Node 24 build-time package, not browser code. It uses classic-level 3.
 dependency installed by npm). It does not execute runtime scripts, fetch licensed content, install modules
 into Foundry, update player Actors, or certify compatibility of caller-provided automation. For Auto 2014,
 the full class/content provider and release manifest migration remain separate from this generic builder.
+
+## Prepared JSON input and CLI
+
+From a repository checkout after `npm ci`:
+
+```sh
+node packages/foundry-pack-builder/src/cli.mjs --input ./module-bundle.json --out ./output/my-module
+```
+
+The package also exposes the `arcane-build-module` npm bin. No npm registry publication is implied.
+`--help` shows usage. Both input and output are explicit local paths; existing nonempty output is rejected.
+This builds a directory for subsequent validation and installation. It does not install or activate it.
+
+Prepare input with the same file bytes and documents you would pass to `writeModule`:
+
+```js
+import {createModuleBundle, writeModuleBundle} from '@arcanedesk/foundry-pack-builder';
+const bundle = createModuleBundle({manifest, documents, files});
+// Serialize bundle as JSON, then pass the parsed data to the CLI or this API:
+await writeModuleBundle({directory: './output/my-module', bundle});
+```
+
+The top-level fields are exactly `format: "arcane-module-bundle"`, `schemaVersion: 1`, `manifest`,
+`documents`, and `files`. Files map relative paths to canonical base64 strings. Document data is
+normalized using JSON serialization, as with compendium records. Invalid encoding, unsupported versions,
+traversal, missing assets, duplicate IDs and occupied output remain errors. Scripts are stored as bytes
+and never evaluated during assembly. Failed writes may leave partial output; do not install that output.
+
+A bundle contains actual descriptions, documents and assets supplied by its producer. It is not a
+license-free metadata file or an automatic public export. Keep it within the same authorization and
+distribution scope as its content. This format assembles prepared documents; it does not obtain rules
+text or compile arbitrary third-party spell/class entries into Arcane automation.
+
+The complete internal Auto 2014 build serializes this format, then reads it back through the shared API.
+Internal CI separately runs this public CLI on the complete prepared bundle and compares all 17 packs
+and 720 other artifacts with the reviewed migration baseline. Public tests use only original fixtures.
