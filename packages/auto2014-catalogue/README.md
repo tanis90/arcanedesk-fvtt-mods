@@ -184,3 +184,19 @@ nonempty. Complete-card replacements use the same guard. Callers must separately
 required content rather than treating this helper as a completeness check.
 `remapSpellReferences` preserves the legacy recursive string replacement behavior, including
 text fields; use trusted, deliberate identity maps. Methods mutate supplied documents.
+
+### Document preparation
+
+`./documents` exports `createDocumentTools({moduleId, bindings})` for offline reference
+rewriting, metadata preparation and embedded-effect hydration. Bindings contain ordered
+`replacements`, ordered `packAliases` pairs, `metadata`, and a `sourceNamespace`.
+Literal replacements use `{kind: 'literal', from, to}`; regex replacements use
+`{kind: 'regex', pattern, flags, to}`. Literal source/target strings and regex targets
+expand `{{moduleId}}`. Supply trusted, reviewed bindings: regexes and broad text
+replacements are source-adapter policies, not a sanitizer for arbitrary downloaded inputs.
+
+`cleanEffects` copies donor effects before editing them. Historical behavior is retained:
+ID-referenced effects receive metadata/ownership normalization and lose their imported
+type/system fields; inline effects retain those fields. Unresolved effect IDs are omitted.
+The helper does not remove arbitrary executable fields or certify content rights. Compiled
+spells must still use the clean-room composition boundary. No files or worlds are modified.

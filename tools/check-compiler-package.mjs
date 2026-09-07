@@ -98,6 +98,15 @@ const tools=createSpellContentTools({moduleId:'original',actorStudioModuleId:'or
 const doc={_id:'originalText',type:'spell',name:'Practice',system:{description:{value:'<p>Original English text.</p>'}}};
 tools.applyBilingualSpellText(doc,new Map([['originalText',{name:'练习',description:'<p>原创文本。</p>'}]]));
 assert.equal(doc.name,'练习 Practice');assert(doc.system.description.value.includes('<p>Original English text.</p>'));assert(doc.system.description.value.includes('<p>原创文本。</p>'));`],{cwd:temp,stdio:'pipe'});
+  await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/document-bindings.mjs'),path.join(temp,'original-document-fixture.mjs'));
+  execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
+import {createDocumentTools} from '@arcanedesk/auto2014-catalogue/documents';
+import {originalDocumentBindings} from './original-document-fixture.mjs';
+const api=createDocumentTools({moduleId:'original-target',bindings:originalDocumentBindings()});
+const doc={_id:'Original001',effects:['OriginalEffect1']};
+api.cleanEffects(doc,new Map([['OriginalEffect1',{_id:'OriginalEffect1',changes:[]}]]),'features');
+assert.equal(doc.effects[0].origin,'Compendium.original-target.features.Item.Original001');
+assert.equal(api.rewriteString('modules/original-source/practice.svg'),'modules/original-target/practice.svg');`],{cwd:temp,stdio:'pipe'});
   await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/summon-provider.mjs'),path.join(temp,'original-summon-fixture.mjs'));
   execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
 import {createSummonAssembler} from '@arcanedesk/auto2014-catalogue/summons';
