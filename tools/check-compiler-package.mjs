@@ -178,6 +178,12 @@ const uuidFor=(pack,id)=>'Compendium.original.'+pack+'.Item.'+id;
 const api=createDragonlanceTools({moduleId:'original',uuidFor,bindings:originalCampaignBindings(),backgroundIdentifier:()=> 'original-background',featIdentifier:()=> 'original-feat',collectDeferredBackgroundItems:()=>[],abilityChoiceAdvancement:createAdvancementTools({rewriteUuid:x=>x,uuidFor}).abilityChoiceAdvancement});
 const doc={_id:'TrainingBackground',system:{description:{value:'Original prose'}}};
 api.normalizeDragonlanceBackground(doc);assert.equal(doc.system.advancement[0].level,0);assert.equal(doc.system.advancement[0].hint,'Choose the reward earned in training.');assert.equal(doc.system.description.value,'Original prose');`],{cwd:temp,stdio:'pipe'});
+  execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
+import {createItemPreparationTools,normalizeSpellAnimationMetadata} from '@arcanedesk/auto2014-catalogue/item-preparation';
+import {createActivityTools} from '@arcanedesk/auto2014-catalogue/activities';
+const api=createItemPreparationTools({rewriteString:x=>x,activityTools:createActivityTools({moduleId:'original',spellAutomationProfiles:{version:1,defaults:{}}}),bindings:{identifiers:{OriginalItem:'original-item'},itemUseAliases:{},singleTargetSpellIdentifiers:[]}});
+const doc={_id:'OriginalItem',type:'spell',system:{description:{value:'Original prose'}},flags:{autoanimations:{isEnabled:false}}};
+api.normalizeIdentifiers(doc);normalizeSpellAnimationMetadata(doc);assert.equal(doc.system.identifier,'original-item');assert.equal(doc.system.description.value,'Original prose');assert.equal(doc.flags.autoanimations,undefined);`],{cwd:temp,stdio:'pipe'});
   console.log(JSON.stringify(packedPackages.map(packed=>({name:packed.name,version:packed.version,files:packed.files.length,packedBytes:packed.size,installedOutsideWorkspace:true}))));
 } finally {
   // mkdtemp created this exact directory for this invocation; never remove caller paths.

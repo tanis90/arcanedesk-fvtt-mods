@@ -1,3 +1,4 @@
+import {normalizeSpellAnimationMetadata} from './item-preparation.mjs';
 import {composeSpellItem} from '@arcanedesk/auto2014-compiler';
 import {spellAutomationSpecs,spellAutomationCompiledIds} from './data/spell-automation/registry.mjs';
 import {assertRegisteredPerSpellScript} from './data/spell-automation/scripts/registry.mjs';
@@ -15,7 +16,6 @@ export function composeRegisteredSpell(contentItem,emissionOptions={}) {
   const result=composeSpellItem(contentItem,definition,emissionOptions);
   // Match the complete module's final animation metadata policy. A disabled,
   // uncustomized AutoAnimations placeholder must not survive pack assembly.
-  const animation=result.item.flags?.autoanimations;
-  if(animation?.isEnabled===false && animation.isCustomized!==true)delete result.item.flags.autoanimations;
+  normalizeSpellAnimationMetadata(result.item);
   return result;
 }
