@@ -23,8 +23,9 @@ Tests check the adapters with controlled Foundry mocks; they do not claim a new 
 
 Auto 2014's shared compiler is available under [packages/auto2014-compiler](packages/auto2014-compiler/README.md).
 Its canonical runtime source is available under [packages/auto2014-runtime](packages/auto2014-runtime/README.md).
-The complete Foundry automation module and spell catalogue remain under source/content separation and provenance
-review. This repository does not distribute the existing full-text compendiums.
+The [automation catalogue](packages/auto2014-catalogue/README.md) contains 186 recipes that compose
+caller-supplied content through the shared compiler. The complete installable Foundry module remains under
+separation; these source packages do not distribute the existing full-text compendiums or summon creature data.
 
 ## Contributions and licensing
 
