@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {encodeCompendium,writeCompendium} from './compendium.mjs';
 
-function relativeFile(value){
+export function relativeFile(value){
   if(typeof value!=='string'||!value||value.split('/').some(p=>!p||p==='.'||p==='..'||p.toLowerCase()==='.git'||/[\x00-\x1f<>:"\\|?*]/.test(p)||/[. ]$/.test(p)))throw Error(`Invalid module file path ${value}`);
   return value;
 }
