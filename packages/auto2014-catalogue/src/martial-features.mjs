@@ -12,36 +12,8 @@ export function createMartialFeatureTools({moduleId, uuidFor, content: input}) {
   for (const value of [...content.monk.profUseIds, content.monk.frightenFeatureId, content.monk.effectId, content.monk.effectName, content.rogue.sneakAttackFeatureId, content.rogue.damageActivityId, content.rogue.legacyEffectId]) {
     if (typeof value !== 'string' || !value) throw Error('Invalid martial feature binding');
   }
-  const {normalizeActivityForFullAutomation, normalizeSelfItemUseActivity} = createActivityTools({moduleId, spellAutomationProfiles: {}});
-  function ensureUtilityActivity(doc, activityId) {
-    doc.system ??= {};
-    doc.system.activities ??= {};
-    if (!doc.system.activities[activityId]) {
-      doc.system.activities[activityId] = {
-        _id: activityId,
-        type: "utility",
-        activation: { type: "special", value: null, condition: "", override: false },
-        consumption: {
-          targets: [{ type: "itemUses", target: "", value: "1", scaling: { mode: "", formula: "" } }],
-          scaling: { allowed: false, max: "" },
-          spellSlot: true,
-        },
-        description: { chatFlavor: "" },
-        duration: { concentration: false, value: "0", units: "", special: "", override: false },
-        effects: [],
-        range: { units: "self", special: "", override: false },
-        target: {
-          template: { count: "", contiguous: false, type: "", size: "", width: "", height: "", units: "" },
-          affects: { count: "", type: "self", choice: false, special: "" },
-          prompt: false,
-          override: true,
-        },
-        uses: { spent: 0, max: "", recovery: [] },
-        sort: 0,
-      };
-    }
-    return doc.system.activities[activityId];
-  }
+  const {ensureUtilityActivity, normalizeActivityForFullAutomation, normalizeSelfItemUseActivity} = createActivityTools({moduleId, spellAutomationProfiles: {}});
+
 
   function normalizeFighterAutomation(doc) {
     const identifier = doc.system?.identifier;

@@ -126,3 +126,16 @@ They do not implement every feature of those classes.
 `rogue: {sneakAttackFeatureId, damageActivityId, legacyEffectId}`.
 Bindings are snapshotted; concrete source IDs, effect prose and icon mappings are not bundled here.
 The internal build uses these same functions with its private bindings. Caller descriptions and spent resource counts are retained.
+
+## Barbarian feature normalization
+
+`@arcanedesk/auto2014-catalogue/barbarian-features` exports `createBarbarianFeatureTools({moduleId, uuidFor, content})`.
+It preserves the existing rage, independent rider, resource and manual-fallback handling; it is not a promise that all subclass features are automated.
+`content` provides `barbarianFeatureIdentifierById`, `juggernautDocumentIds`, `giantDocumentIds`, `officialImages`,
+plus named `ids` and `text` bindings. See the [original fixture](tests/fixtures/barbarian-bindings.mjs) for the complete binding shape.
+Private source IDs, rule descriptions and workflow prose are not included in the package.
+
+The returned `normalizeBarbarianAutomation` mutates caller documents and preserves existing manual workflows.
+`appendBarbarianWorkflowNote` appends caller prose once; rider helpers do not consume another rage.
+Bindings are copied at construction. These functions prepare documents and do not execute Foundry workflows.
+Utility Activity creation now lives in the shared activities entry; the martial-features entry retains its existing returned helper.

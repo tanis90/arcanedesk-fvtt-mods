@@ -142,5 +142,34 @@ export function createActivityTools({moduleId, spellAutomationProfiles: profiles
       choice: false,
     };
   }
-  return Object.freeze({normalizeActivityForFullAutomation,spellActivityUsesMeasuredTemplate,effectiveSpellActivityTarget,effectiveSpellActivityRange,inferSpellActivityInput,spellAutomationProfile,inferTemplateTargetPolicy,normalizeSpellInteractionContracts,normalizeSelfItemUseActivity,setActivityCreatureTargets});
+  function ensureUtilityActivity(doc, activityId) {
+    doc.system ??= {};
+    doc.system.activities ??= {};
+    if (!doc.system.activities[activityId]) {
+      doc.system.activities[activityId] = {
+        _id: activityId,
+        type: "utility",
+        activation: { type: "special", value: null, condition: "", override: false },
+        consumption: {
+          targets: [{ type: "itemUses", target: "", value: "1", scaling: { mode: "", formula: "" } }],
+          scaling: { allowed: false, max: "" },
+          spellSlot: true,
+        },
+        description: { chatFlavor: "" },
+        duration: { concentration: false, value: "0", units: "", special: "", override: false },
+        effects: [],
+        range: { units: "self", special: "", override: false },
+        target: {
+          template: { count: "", contiguous: false, type: "", size: "", width: "", height: "", units: "" },
+          affects: { count: "", type: "self", choice: false, special: "" },
+          prompt: false,
+          override: true,
+        },
+        uses: { spent: 0, max: "", recovery: [] },
+        sort: 0,
+      };
+    }
+    return doc.system.activities[activityId];
+  }
+  return Object.freeze({ensureUtilityActivity,normalizeActivityForFullAutomation,spellActivityUsesMeasuredTemplate,effectiveSpellActivityTarget,effectiveSpellActivityRange,inferSpellActivityInput,spellAutomationProfile,inferTemplateTargetPolicy,normalizeSpellInteractionContracts,normalizeSelfItemUseActivity,setActivityCreatureTargets});
 }
