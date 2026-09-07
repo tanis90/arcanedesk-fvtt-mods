@@ -8,10 +8,12 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "test": "node modules/arcane-common-display-vision/scripts/validate.mjs && node --test tests/*.test.mjs",
+    "test": "node modules/arcane-common-display-vision/scripts/validate.mjs && node --test tests/*.test.mjs && npm test --workspaces --if-present",
     "build": "node tools/build.mjs",
-    "verify": "npm test && npm run build"
+    "verify": "npm test && npm run build && npm run pack:check",
+    "pack:check": "node tools/check-compiler-package.mjs"
   },
+  "workspaces": ["packages/*"],
   "devDependencies": {
     "fflate": "0.8.3"
   }

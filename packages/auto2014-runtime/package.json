@@ -1,0 +1,12 @@
+{
+  "name": "@arcanedesk/auto2014-runtime",
+  "version": "0.4.0",
+  "type": "module",
+  "license": "Apache-2.0",
+  "description": "Canonical Foundry runtime source used by Arcane Auto 2014",
+  "engines": { "node": ">=24 <25" },
+  "exports": { ".": "./src/index.mjs" },
+  "files": ["src/", "README.md", "LICENSE", "NOTICE"],
+  "scripts": { "test": "node --test tests/*.test.mjs" },
+  "repository": { "type": "git", "url": "https://github.com/tanis90/arcanedesk-fvtt-mods.git", "directory": "packages/auto2014-runtime" }
+}
