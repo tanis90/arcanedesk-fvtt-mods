@@ -12,5 +12,10 @@ export function composeRegisteredSpell(contentItem,emissionOptions={}) {
   if(!compiledIds.has(id))throw new Error(`No compiled spell recipe registered for ${id ?? '(missing identifier)'}`);
   const definition=spellAutomationSpecs[id];
   assertRegisteredPerSpellScript(definition);
-  return composeSpellItem(contentItem,definition,emissionOptions);
+  const result=composeSpellItem(contentItem,definition,emissionOptions);
+  // Match the complete module's final animation metadata policy. A disabled,
+  // uncustomized AutoAnimations placeholder must not survive pack assembly.
+  const animation=result.item.flags?.autoanimations;
+  if(animation?.isEnabled===false && animation.isCustomized!==true)delete result.item.flags.autoanimations;
+  return result;
 }
