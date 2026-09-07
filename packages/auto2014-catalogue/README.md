@@ -296,3 +296,18 @@ configured resource counters start unspent. Apply to fresh build inputs, not liv
 Descriptions remain caller content; reference rewriting is not HTML sanitization or a
 redistribution-rights check. No source descriptions, identity lists or licensed content
 are supplied by this entry point. These helpers do not form a complete installable module.
+
+### Item preparation
+
+`./item-preparation` exports `createItemPreparationTools({rewriteString, activityTools, bindings})`
+and the standalone `normalizeSpellAnimationMetadata(doc)`. The factory accepts the existing
+`createActivityTools` API. Bindings contain `identifiers` and `itemUseAliases` string maps
+and an explicit `singleTargetSpellIdentifiers` array; the factory copies these policies.
+
+Its methods rewrite item-use references, assign configured identifiers and prepare
+noncompiled spell cards. Pass the compiled identifier Set to `normalizeSpellAutomation`;
+compiler-owned cards fail before mutation. Preparation retains the existing pass order and
+uses the shared activity interaction policy. Source mappings and content are not bundled.
+Animation cleanup removes only disabled, noncustomized placeholders from spell documents;
+the registered spell composer and complete build both use this same function. These helpers
+mutate offline build inputs, preserve caller descriptions and do not install or update Actors.
