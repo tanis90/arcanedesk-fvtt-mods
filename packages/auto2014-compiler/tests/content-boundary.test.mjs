@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {compileSpellAutomation,emitSpellAutomationItem,assertEmittedSpellItem,extractCleanRoomDocumentIdentity,extractCleanRoomPackaging} from '../src/index.mjs';
+import {composeSpellItem,compileSpellAutomation,emitSpellAutomationItem,assertEmittedSpellItem,extractCleanRoomDocumentIdentity,extractCleanRoomPackaging} from '../src/index.mjs';
 import {cleanRoomSpell,spellContract,spellLifetime,instant,graphFragment,publicAction,rule,trigger,selected,operation,dice,acceptance} from '../src/data/spell-automation/dsl.mjs';
 // Original synthetic fixture, not copied from any spell or external pack.
 const recipe=cleanRoomSpell({
@@ -44,4 +44,18 @@ test('donor executable fields do not become clean-room mechanics',()=>{
 test('a different identifier cannot accidentally receive this recipe',()=>{
   const item=content('Original'); item.system.identifier='another-test-item';
   assert.throws(()=>compile(item),/cannot compile Item/);
+});
+
+test('composition retains readable content and stable identity without mutating the source',()=>{
+  const input=content('<p>Player-readable original test description.</p>');
+  input.system.description.chat='<p>Original chat description.</p>';
+  const before=structuredClone(input);
+  const {item,compilation}=composeSpellItem(input,recipe);
+  assert.deepEqual(input,before);
+  assert.equal(item._id,input._id);
+  assert.equal(item.name,input.name);
+  assert.equal(item.img,input.img);
+  assert.deepEqual(item.system.description,input.system.description);
+  assert.deepEqual(item,compile(input).emitted);
+  assertEmittedSpellItem(item,compilation);
 });
