@@ -200,3 +200,19 @@ ID-referenced effects receive metadata/ownership normalization and lose their im
 type/system fields; inline effects retain those fields. Unresolved effect IDs are omitted.
 The helper does not remove arbitrary executable fields or certify content rights. Compiled
 spells must still use the clean-room composition boundary. No files or worlds are modified.
+
+### Advancement constructors and data recipes
+
+`createAdvancementTools` also returns `innateSpellGrant`, `traitAdvancement`,
+`abilityScoreAdvancement` and `abilityChoiceAdvancement`. These retain the existing
+2014 preparation templates: innate grants use Charisma without requiring a slot;
+ability increases use the existing cap of 1. Caller-provided identities, labels,
+choices and pools remain caller content, not bundled source material.
+
+The `./advancement` entry additionally exports `resolveOptionRecipe(value, {references, calls})`.
+Plain objects/arrays are copied recursively. `{$reference: name}` reads an explicitly
+supplied own property; `{$call: name, args: [...]}` invokes an explicitly supplied own
+function; array entries of `{$spread: value}` expand a resolved array. Unknown operations
+and unresolved names fail. Only supply reviewed constructors and bindings; this resolver
+is not a sandbox for arbitrary functions. Referenced pools retain their identity, matching
+existing constructor behavior. There is no dynamic code evaluation or content download.
