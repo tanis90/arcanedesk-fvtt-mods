@@ -232,3 +232,16 @@ Descriptions are preserved. Passive effect origins use the caller's `passiveEffe
 the internal build preserves its historical origin policy during this migration.
 `removeEmptyEffects` only tests changes/statuses, retaining the existing narrow cleanup rule.
 These mutating preparation helpers do not install modules or update world Actors.
+
+### PHB racial traits
+
+`./phb-racial-traits` exports `createPhbRacialTools({moduleId, bindings, advancementTools, passiveTools})`.
+Pass the existing advancement factory's `traitAdvancement`/`innateSpellGrant` and character-option
+factory's `setPassiveEffects`/`passiveTransferEffect`; these are shared implementations, not copied adapters.
+Bindings contain caller-owned trait IDs, four display labels, three spell identities, an identifier map
+and a breath profile map. See the original fixture for the data shape.
+
+The API returns `normalizePhbRacialTrait`, `normalizeDragonbornBreath`, `addResistanceEffect`
+and `addBooleanFlagEffect`. Existing resource, scaling and runtime marker policies are preserved;
+no rule descriptions, source documents or artwork are bundled. Methods prepare documents offline,
+not world Actors. This extraction does not certify new runtime QA or expand automation support.
