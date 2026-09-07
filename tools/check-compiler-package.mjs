@@ -71,6 +71,13 @@ import {createMartialFeatureTools} from '@arcanedesk/auto2014-catalogue/martial-
 const tools=createMartialFeatureTools({moduleId:'original',uuidFor:(pack,id)=>'Compendium.original.'+pack+'.Item.'+id,content:{fighterImages:{},monkImages:{},rogueImages:{},monk:{profUseIds:[],frightenFeatureId:'originalFear',effectId:'originalEffect',effectName:'Original effect'},rogue:{sneakAttackFeatureId:'originalSneak',damageActivityId:'originalDamage',legacyEffectId:'originalLegacy'}}});
 const doc={system:{identifier:'action-surge',activities:{}}};tools.normalizeFighterAutomation(doc);
 assert.equal(Object.values(doc.system.activities)[0].type,'utility');assert.equal(doc.system.uses.recovery[0].period,'sr');`],{cwd:temp,stdio:'pipe'});
+  await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/barbarian-bindings.mjs'),path.join(temp,'original-barbarian-fixture.mjs'));
+  execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
+import {createBarbarianFeatureTools} from '@arcanedesk/auto2014-catalogue/barbarian-features';
+import {originalBarbarianBindings as content} from './original-barbarian-fixture.mjs';
+const tools=createBarbarianFeatureTools({moduleId:'original',uuidFor:(pack,id)=>'Compendium.original.'+pack+'.Item.'+id,content});
+const doc={_id:content.ids.rage,effects:[],system:{activities:{}}};tools.normalizeBarbarianAutomation(doc);
+assert.equal(doc.effects[0].changes.length,6);assert.equal(doc.effects[0].name,content.text.rageName);`],{cwd:temp,stdio:'pipe'});
   await fs.copyFile(path.join(root,'packages/auto2014-catalogue/tests/fixtures/summon-provider.mjs'),path.join(temp,'original-summon-fixture.mjs'));
   execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
 import {createSummonAssembler} from '@arcanedesk/auto2014-catalogue/summons';
