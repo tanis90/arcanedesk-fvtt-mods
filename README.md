@@ -6,8 +6,14 @@ Independent Foundry VTT modules maintained by ArcaneDesk. Each module has its ow
 | --- | --- | --- |
 | arcane-common-display-vision | Full-scene overview for Monk's Common Display, preserving GM-hidden tokens | Foundry 13, Monk's Common Display 13.01+ |
 | arcane-dice-so-nice-dnd5e-fix | Correct the Dice So Nice dd preset to render a d20 | Foundry 13, Dice So Nice 5.2.5, dnd5e 5.3.3 |
+| arcane-spells-2014 | Generate automated spells from existing 2014 content | Foundry 13, dnd5e 5.3.3, Midi-QOL, DAE |
 
 These modules do not require ArcaneDesk Desktop. Their third-party dependencies are installed separately.
+
+See the [spell suite guide](docs/spell-suite/README.md) for the 167-spell scope,
+offline examples, installation and source-compendium generation flow.
+Version 0.1.0 has passed SRD 5.1 generation and representative live spell tests.
+Install using the [Foundry manifest](https://raw.githubusercontent.com/tanis90/arcanedesk-fvtt-mods/main/modules/arcane-spells-2014/module.json).
 
 ## Build and verify
 

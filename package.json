@@ -10,11 +10,15 @@
   "scripts": {
     "test": "node modules/arcane-common-display-vision/scripts/validate.mjs && node --test tests/*.test.mjs && npm test --workspaces --if-present",
     "build": "node tools/build.mjs",
-    "verify": "npm test && npm run build && npm run pack:check",
-    "pack:check": "node tools/check-compiler-package.mjs"
+    "verify": "npm test && npm run check:spell-browser && npm run build && npm run pack:check",
+    "pack:check": "node tools/check-compiler-package.mjs",
+    "check:spell-browser": "node tools/check-spell-browser.mjs"
   },
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "devDependencies": {
-    "fflate": "0.8.3"
+    "fflate": "0.8.3",
+    "esbuild": "0.28.2"
   }
 }
