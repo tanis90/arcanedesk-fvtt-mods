@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "sha256": "8b7bdd083a1919b999a4b4d0d31e30af6b229f64c2ae10fb0b570eef51968778",
+  "note": "Reviewed starting shared runtime. Changes require re-auditing the spell projection; never refresh automatically in CI."
+}
