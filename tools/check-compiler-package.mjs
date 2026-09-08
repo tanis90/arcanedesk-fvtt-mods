@@ -9,7 +9,11 @@ const temp=await fs.mkdtemp(path.join(os.tmpdir(),'arcane-compiler-pack-'));
 const npm=(args,cwd)=>execFileSync(process.execPath,[process.env.npm_execpath,...args],{cwd,encoding:'utf8',env:{...process.env,npm_config_audit:'false',npm_config_fund:'false'}});
 try {
   const packedPackages=JSON.parse(npm(['pack','--workspaces','--ignore-scripts','--json','--pack-destination',temp],root));
-  assert.equal(packedPackages.length,4);
+  assert.deepEqual(packedPackages.map(p=>p.name).sort(), [
+    '@arcanedesk/auto2014-catalogue', '@arcanedesk/auto2014-compiler',
+    '@arcanedesk/auto2014-runtime', '@arcanedesk/foundry-pack-builder',
+    '@arcanedesk/automation-contracts', '@arcanedesk/spell-compiler', '@arcanedesk/spells-2014', '@arcanedesk/spell-runtime',
+  ].sort());
   for(const packed of packedPackages) {
     assert(packed.files.some(f=>f.path==='LICENSE'));
     assert(packed.files.some(f=>f.path==='NOTICE'));
@@ -39,6 +43,12 @@ try {
   await fs.writeFile(path.join(temp,'package.json'),JSON.stringify(isolated,null,2)+'\n');
   await fs.writeFile(path.join(temp,'package-lock.json'),JSON.stringify(lock,null,2)+'\n');
   npm(['ci','--ignore-scripts','--offline'],temp);
+  execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
+import {spellAutomationSpecs, perSpellScriptRegistry, readPerSpellScriptSource} from '@arcanedesk/spells-2014';
+import {compileSpellPlan} from '@arcanedesk/spell-compiler';
+assert.equal(Object.keys(spellAutomationSpecs).length,167);
+for(const definition of Object.values(spellAutomationSpecs))assert.equal(compileSpellPlan(definition).definitionId,definition.id);
+for(const id of ['harm','banishing-smite']){assert.equal(perSpellScriptRegistry[id].version,1);assert(readPerSpellScriptSource(id).includes('register'));}`],{cwd:temp,stdio:'pipe'});
   execFileSync(process.execPath,['--input-type=module','-e','import {compileSpellAutomation} from "@arcanedesk/auto2014-compiler"; import {cleanRoomSpell} from "@arcanedesk/auto2014-compiler/dsl"; import {readRuntimeSource} from "@arcanedesk/auto2014-runtime"; if(typeof compileSpellAutomation!=="function" || typeof cleanRoomSpell!=="function" || !(await readRuntimeSource()).includes("dnd5e.preUseActivity")) throw Error("Missing exports");'],{cwd:temp,stdio:'pipe'});
   execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
 import {spellAutomationCompiledIds,composeRegisteredSpell,summonProfileIdentities} from '@arcanedesk/auto2014-catalogue';

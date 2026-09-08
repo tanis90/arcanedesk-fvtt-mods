@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {zipSync} from 'fflate';
+import {buildSpellModuleFiles} from './build-spell-module.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 const out=path.join(root,'dist');
 await fs.mkdir(out,{recursive:true});
@@ -20,7 +21,13 @@ for(const id of (await fs.readdir(path.join(root,'modules'))).sort()) {
       else files[key]=[new Uint8Array(await fs.readFile(full)),{mtime:new Date(2000,0,1,0,0,0)}];
     }
   }
-  await collect(dir);
+  if (id === 'arcane-spells-2014') {
+    const built = await buildSpellModuleFiles();
+    for (const [name, contents] of built.files) {
+      files[name] = [typeof contents === 'string' ? new TextEncoder().encode(contents) : new Uint8Array(contents),
+        {mtime: new Date(2000,0,1,0,0,0)}];
+    }
+  } else await collect(dir);
   for(const name of ['LICENSE','NOTICE']) files[name]=[new Uint8Array(await fs.readFile(path.join(root,name))),{mtime:new Date(2000,0,1,0,0,0)}];
   const bytes=zipSync(files,{level:9}), name=`${id}-${manifest.version}.zip`;
   await fs.writeFile(path.join(out,name),bytes);

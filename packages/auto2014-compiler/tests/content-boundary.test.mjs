@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {compileSpellPlan, bindSpellPlan} from '../src/index.mjs';
 import {composeSpellItem,compileSpellAutomation,emitSpellAutomationItem,assertEmittedSpellItem,extractCleanRoomDocumentIdentity,extractCleanRoomPackaging} from '../src/index.mjs';
 import {cleanRoomSpell,spellContract,spellLifetime,instant,graphFragment,publicAction,rule,trigger,selected,operation,dice,acceptance} from '../src/data/spell-automation/dsl.mjs';
 // Original synthetic fixture, not copied from any spell or external pack.
@@ -21,6 +22,30 @@ function compile(item,definition=recipe) {
   const emitted=emitSpellAutomationItem(item,compilation); assertEmittedSpellItem(emitted,compilation);
   return {compilation,emitted};
 }
+
+test('serialized mechanical plan binds multiple contents without recompilation',()=>{
+  const plan=JSON.parse(JSON.stringify(compileSpellPlan(recipe)));
+  const before=structuredClone(plan);
+  assert.equal(plan.content,undefined);
+  assert.equal(plan.documentIdentity,undefined);
+  const first=content('<p>First original body.</p>');
+  const second=content('<p>Second original body.</p>');second._id='arcTraining00002';
+  const bind=item=>bindSpellPlan(item,plan,{documentIdentity:extractCleanRoomDocumentIdentity(item),packaging:extractCleanRoomPackaging(item)});
+  const a=bind(first),b=bind(second);
+  assert.equal(a.executionPlanHash,b.executionPlanHash);
+  assert.notEqual(a.contentHash,b.contentHash);
+  assert.deepEqual(emitSpellAutomationItem(first,a),compile(first).emitted);
+  assert.deepEqual(emitSpellAutomationItem(second,b),compile(second).emitted);
+  assert.equal(emitSpellAutomationItem(second,b)._id,second._id);
+  assert.deepEqual(plan,before);
+});
+
+test('plan binding rejects incompatible compiler and identity contracts',()=>{
+  const plan=compileSpellPlan(recipe);
+  assert.throws(()=>bindSpellPlan(content('Original'),{...plan,compilerVersion:'unsupported'}),/Incompatible/);
+  assert.throws(()=>bindSpellPlan(content('Original'),{...plan,definitionId:'different'}),/invalid/);
+  assert.throws(()=>compileSpellPlan({...recipe,emission:{mode:'lift'}}),/clean-room/);
+});
 test('presentation changes preserve mechanics and input objects',()=>{
   const first=content('<p>Original training text.</p>'),before=structuredClone(first);
   const a=compile(first),b=compile({...content('<p>另一份自有测试描述。</p>'),img:'icons/svg/dice-target.svg'});
