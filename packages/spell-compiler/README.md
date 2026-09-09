@@ -21,3 +21,24 @@ Public binding supplies `resourceBindings` with a target Item UUID and exact sum
 profile revision/recipe/Actor UUID mappings. Missing mappings fail instead of
 falling back to internal pack addresses. The host must separately verify that
 resource documents exist and satisfy their mechanical contracts.
+
+Entity choice plans can use `enumParameter(id, values, {labels, defaultValue})`
+to retain one action with a runtime selection, instead of expanding named actions.
+The default must be a declared string value; the parameter must belong to the
+entity's creator action and exactly match its ordered profile choices and labels.
+The projected `requiredSelections` entry has `required: false` and `defaultValue`;
+the entity retains `profile-choice` cardinality and all profiles. Omitting
+`defaultValue` preserves existing named-action output.
+
+Item emission retains one native SummonActivity with all profiles, ordered with
+the default first. Its version-1 `nativeSummon.selection` maps each typed value to
+the native profile ID, exact Actor UUID, resource identity and expected count.
+The runtime freezes the selected contract per invocation and checks it again at
+placement, Token preparation, post-use and workflow finalization. A supplied typed
+value must agree with the native profile; neither path rewrites the source Item.
+
+SDK selection handling is implemented in the companion SDK development tree.
+Dancing Lights has QA-A UI/Context acceptance using SDK `edb0bfe`; see the
+[versioned acceptance summary](../spells-2014/README.md#cantrip-runtime-acceptance).
+That evidence covers the declared consumer and tested versions; a new consumer
+still needs its own runtime acceptance.

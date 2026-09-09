@@ -1,6 +1,7 @@
 # Auto 2014 automation catalogue
 
-The sole source of the migrated 186 spell recipes, summon pools/references and two per-spell scripts.
+Compatibility entry for the 187 shared spell recipes, summon pools/references and three per-spell scripts.
+Definitions and scripts are authored in `spells-2014`; this package reuses those same objects.
 Full summon profiles are provider inputs; the catalogue keeps only 22 immutable reference records.
 The complete internal module build stages these same files into its historical relative layout.
 The package includes automation recipes, implementation limitations and DM workflow notes.
@@ -61,7 +62,7 @@ module packaging still need to be assembled and verified together.
 
 From the repository root on Node 24: `npm ci`, then `npm run verify`.
 Verification tests every registered recipe's content boundary, packs the source packages,
-installs them offline outside the repository and composes all 186 recipes without private content inputs.
+installs them offline outside the repository and composes all 187 recipes without private content inputs.
 Package checks also reject accidentally including the full summon profile source. Internal tests compare
 every reference's profileId, revision, documentId, recipeId and summonUsage with the full provider.
 

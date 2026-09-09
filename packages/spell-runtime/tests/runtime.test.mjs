@@ -12,13 +12,14 @@ function host({legacy = false, failAt = Infinity} = {}) {
     ['arcane-spells-2014', {active: true}],
     ['arcane-dnd5e-2014-automation', {active: legacy, api: legacy ? {original: true} : undefined}],
   ])};
-  const warnings = [];
+  const warnings = [], wrappers = [];
   const context = vm.createContext({game, canvas: {tokens: {placeables: []}},
+    libWrapper: {register: (...args) => wrappers.push(args)},
     Hooks: {on: add, once: add, off: (_name, id) => hooks.delete(id), callAll: () => {}, call: () => true},
     console: {warn: (...args) => warnings.push(args), log: () => {}}, setTimeout, clearTimeout, queueMicrotask});
   new vm.Script(built.source.replace('export function initializeSpellRuntime', 'function initializeSpellRuntime')
     + '\nglobalThis.initialize = initializeSpellRuntime;').runInContext(context);
-  return {context, game, hooks, warnings};
+  return {context, game, hooks, warnings, wrappers};
 }
 
 test('spell closure excludes career entry points and is deterministic', async () => {
@@ -81,6 +82,10 @@ test('ready wiring exposes spell API with an empty offline host', async () => {
   assert.equal(runtime.api.applyDeclaredDivineSmite, undefined);
   assert.equal(runtime.api.restActor, undefined);
   assert.deepEqual(h.warnings, []);
+  assert.equal(h.wrappers.length, 1);
+  assert.equal(h.wrappers[0][0], 'arcane-spells-2014');
+  assert.equal(h.wrappers[0][1], 'CONFIG.ActiveEffect.documentClass.prototype.isSuppressed');
+  assert.equal(h.wrappers[0][3], 'WRAPPER');
 });
 
 test('spell-only recovery ignores ancestry receipts on existing actors', async () => {

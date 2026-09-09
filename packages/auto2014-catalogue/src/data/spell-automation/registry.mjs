@@ -15,6 +15,7 @@ import mistyStep from "./specs/misty-step.mjs";
 import guidingBolt from "./specs/guiding-bolt.mjs";
 import faerieFire from "./specs/faerie-fire.mjs";
 import light from "./specs/light.mjs";
+import dancingLights from "./specs/dancing-lights.mjs";
 import healingWord from "./specs/healing-word.mjs";
 import prayerOfHealing from "./specs/prayer-of-healing.mjs";
 import massHealingWord from "./specs/mass-healing-word.mjs";
@@ -187,6 +188,7 @@ import wallOfThorns from "./specs/wall-of-thorns.mjs";
 import windWalk from "./specs/wind-walk.mjs";
 
 const entries = [
+  { definition: dancingLights, benchmark: true, compiled: true },
   { definition: hypnoticPattern, benchmark: true, compiled: true },
   { definition: auraOfVitality, benchmark: true, compiled: true },
   { definition: cureWounds, benchmark: true, compiled: true },

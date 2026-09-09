@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "sha256": "8b7bdd083a1919b999a4b4d0d31e30af6b229f64c2ae10fb0b570eef51968778",
-  "note": "Reviewed starting shared runtime. Changes require re-auditing the spell projection; never refresh automatically in CI."
+  "sha256": "cfdc44399237d6244ab947e4c3f64ba5c3595ff17d1af9661dc7278b02b573bd",
+  "note": "Reviewed per-growth-term damage typing for owned-weapon cantrip damage. Each emitted dice term carries the operation damage type before joining; native workflow owns critical expansion. Weapon damage, targeting, source marker and cleanup unchanged. No projection exclusions changed. Never refresh automatically in CI."
 }

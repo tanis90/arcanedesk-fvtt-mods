@@ -734,6 +734,72 @@ function nativeSummonFormula(binding, { baseLevel }) {
   return `(${formula})+(${levels})*(${increment})`;
 }
 
+function nativeSummonProfileChoices(action, entity) {
+  const selectionId = entity?.state?.selection?.id ?? null;
+  const selection = (action.requiredSelections ?? []).find(current =>
+    current.id === selectionId && current.required === false
+  );
+  const selectedChoice = selection ? selection.defaultValue
+    : selectionId ? action.bindings?.[selectionId] : null;
+  const sourceProfiles = entity?.state?.profiles ?? [];
+  if (selection && (
+    selection.type !== "enum"
+    || !selection.values?.some(current => current.value === selection.defaultValue)
+    || stableStringify(selection.values) !== stableStringify(sourceProfiles.map(profile => ({
+      value: profile.choice, label: profile.label,
+    })))
+    || entity?.state?.cardinality?.type !== "profile-choice"
+    || Object.keys(entity.state.cardinality).length !== 1
+    || action.bindings?.[selectionId] !== undefined
+  )) throw new Error(`${action.semanticId} has an invalid native summon runtime selection`);
+  const selected = sourceProfiles.filter(profile =>
+    selectedChoice === null || profile.choice === selectedChoice
+  );
+  if (selected.length !== 1) {
+    throw new Error(`${action.semanticId} native summon must resolve exactly one default profile`);
+  }
+  // dnd5e defaults to the first available native profile. Keep the other choices
+  // intact even when the caller's default is not first in the semantic pool.
+  const profiles = selection
+    ? [selected[0], ...sourceProfiles.filter(profile => profile !== selected[0])]
+    : selected;
+  for (const profile of profiles) {
+    const cardinality = profile.cardinality;
+    const counts = {single: 1, "fixed-small": 2, "fixed-three": 3, "fixed-four": 4, "fixed-group": 5};
+    if (!cardinality || counts[cardinality.type] !== cardinality.count
+      || !Number.isInteger(cardinality.count)) {
+      throw new Error(`${action.semanticId} native summon profile has invalid canonical cardinality`);
+    }
+  }
+  if (!selection && stableStringify(selected[0].cardinality) !== stableStringify(entity?.state?.cardinality)) {
+    throw new Error(`${action.semanticId} native summon cardinality drifted from its profile choice`);
+  }
+  return {selection, profiles, profile: selected[0], cardinality: selected[0].cardinality};
+}
+
+function nativeSummonProfileData(profile, item, action, compilation) {
+  return {
+    _id: stableFoundryId(item.system.identifier, action.semanticId, "summon-profile", profile.choice),
+    count: String(profile.cardinality.count), cr: "", level: {min: null, max: null},
+    name: profile.label, types: [],
+    uuid: summonProfileUuid(profile, compilation.resourceBindings, MODULE_ID),
+  };
+}
+
+function nativeSummonSelectionContract(selection, profiles, item, action, compilation) {
+  if (!selection) return {};
+  return {selection: {
+    version: 1, id: selection.id, defaultValue: selection.defaultValue,
+    choices: profiles.map(profile => ({
+      value: profile.choice,
+      nativeProfileId: stableFoundryId(item.system.identifier, action.semanticId, "summon-profile", profile.choice),
+      profileId: profile.profileId, revision: profile.revision, documentId: profile.documentId,
+      actorUuid: summonProfileUuid(profile, compilation.resourceBindings, MODULE_ID),
+      expectedCount: profile.cardinality.count,
+    })),
+  }};
+}
+
 function configureSummonActivity(activity, item, action, compilation) {
   if (activity.type !== "summon") return;
   const entities = (action.artifacts ?? []).filter(current =>
@@ -745,45 +811,7 @@ function configureSummonActivity(activity, item, action, compilation) {
     );
   }
   const entity = entities[0];
-  const selectionId = entity.state?.selection?.id ?? null;
-  const selectedChoice = selectionId
-    ? action.bindings?.[selectionId]
-    : null;
-  const profiles = (entity.state?.profiles ?? []).filter(profile =>
-    selectedChoice === null || profile.choice === selectedChoice
-  );
-  if (profiles.length !== 1) {
-    throw new Error(
-      `${item.system.identifier} summon action ${action.semanticId} must resolve exactly one profile`,
-    );
-  }
-  const profile = profiles[0];
-  const cardinality = entity.state?.cardinality;
-  const canonicalCardinality = (
-    cardinality?.type === "single"
-    && cardinality?.count === 1
-  ) || (
-    cardinality?.type === "fixed-small"
-    && cardinality?.count === 2
-  ) || (
-    cardinality?.type === "fixed-three"
-    && cardinality?.count === 3
-  ) || (
-    cardinality?.type === "fixed-group"
-    && cardinality?.count === 5
-  );
-  if (!canonicalCardinality) {
-    throw new Error(
-      `${item.system.identifier} summon action ${action.semanticId} must resolve canonical cardinality`,
-    );
-  }
-  if (
-    stableStringify(profile.cardinality) !== stableStringify(cardinality)
-  ) {
-    throw new Error(
-      `${item.system.identifier} summon action ${action.semanticId} cardinality drifted from its profile choice`,
-    );
-  }
+  const {selection, profiles, profile, cardinality} = nativeSummonProfileChoices(action, entity);
   const hpBinding = nativeSummonBinding(entity, "hit-points");
   const attackBinding = nativeSummonBinding(entity, "spell-attack-bonus");
   const saveBinding = nativeSummonBinding(entity, "spell-save-dc");
@@ -831,20 +859,7 @@ function configureSummonActivity(activity, item, action, compilation) {
     proficiency: false,
     saves: Boolean(saveBinding),
   };
-  activity.profiles = [{
-    _id: stableFoundryId(
-      item.system.identifier,
-      action.semanticId,
-      "summon-profile",
-      profile.choice,
-    ),
-    count: String(cardinality.count),
-    cr: "",
-    level: { min: null, max: null },
-    name: profile.label,
-    types: [],
-    uuid: summonProfileUuid(profile, compilation.resourceBindings, MODULE_ID),
-  }];
+  activity.profiles = profiles.map(current => nativeSummonProfileData(current, item, action, compilation));
   // dnd5e owns the entire summon creation path, including one human placement
   // for each profile count and the final Token batch. Arcane only observes the
   // returned Tokens and adds thin ownership/combat/lifecycle sidecars.
@@ -874,6 +889,8 @@ function configureSummonActivity(activity, item, action, compilation) {
     revision: profile.revision,
     documentId: profile.documentId,
     expectedCount: cardinality.count,
+    ...nativeSummonSelectionContract(selection, profiles, item, action, compilation),
+    ...(entity.state.combat === "none" ? { combat: "none" } : {}),
     cleanup: control ? "retain-entity" : entity.state.cleanup.expiry,
     uniqueness: clone(entity.state.uniqueness ?? null),
     ...(control ? { control } : {}),
@@ -3180,16 +3197,8 @@ export function assertEmittedSpellItem(item, compilation) {
         current.kind === "entity"
       );
       const entity = entities[0];
-      const selectionId = entity?.state?.selection?.id ?? null;
-      const selectedChoice = selectionId
-        ? expected.bindings?.[selectionId]
-        : null;
-      const profiles = (entity?.state?.profiles ?? []).filter(profile =>
-        selectedChoice === null || profile.choice === selectedChoice
-      );
-      const profile = profiles[0];
+      const {selection, profiles, profile, cardinality} = nativeSummonProfileChoices(expected, entity);
       const emittedProfile = activity.profiles?.[0];
-      const cardinality = entity?.state?.cardinality;
       const baseLevel = Number(item.system.level);
       const hpBinding = nativeSummonBinding(entity, "hit-points");
       const attackBinding = nativeSummonBinding(entity, "spell-attack-bonus");
@@ -3224,15 +3233,19 @@ export function assertEmittedSpellItem(item, compilation) {
         cardinality?.type === "fixed-three"
         && cardinality?.count === 3
       ) || (
+        cardinality?.type === "fixed-four"
+        && cardinality?.count === 4
+      ) || (
         cardinality?.type === "fixed-group"
         && cardinality?.count === 5
       );
       if (
         entities.length !== 1
-        || profiles.length !== 1
         || !canonicalCardinality
         || stableStringify(profile?.cardinality) !== stableStringify(cardinality)
-        || activity.profiles?.length !== 1
+        || stableStringify(activity.profiles) !== stableStringify(
+          profiles.map(current => nativeSummonProfileData(current, item, expected, compilation))
+        )
         || emittedProfile?.count !== String(cardinality?.count ?? "")
         || emittedProfile?.name !== profile?.label
         || emittedProfile?.uuid
@@ -3274,6 +3287,8 @@ export function assertEmittedSpellItem(item, compilation) {
         revision: profile?.revision,
         documentId: profile?.documentId,
         expectedCount: cardinality?.count,
+        ...nativeSummonSelectionContract(selection, profiles, item, expected, compilation),
+        ...(entity?.state?.combat === "none" ? { combat: "none" } : {}),
         cleanup: expectedControl
           ? "retain-entity"
           : entity?.state?.cleanup?.expiry,

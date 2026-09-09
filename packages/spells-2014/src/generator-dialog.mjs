@@ -7,6 +7,7 @@ const html = value => String(value ?? '').replace(/[&<>"']/g, character => ({'&'
  * checkAvailability must verify the selected runtime and actual resource provider.
  */
 export function createSpellGeneratorDialog({game, Dialog, host, plans, checkAvailability,
+  resolveResourceBindings = async () => ({}),
   newGenerationId = () => globalThis.crypto.randomUUID()}) {
   if (typeof checkAvailability !== 'function') throw new Error('Runtime availability checker is required');
   const write = createCompendiumWriter(host);
@@ -38,10 +39,11 @@ export function createSpellGeneratorDialog({game, Dialog, host, plans, checkAvai
       const documents = (await source.getDocuments({type: 'spell'})).map(document => materializeSourceDocument(document, source));
       const existing = existingPack ? (await existingPack.getDocuments()).map(document => document.toObject()) : [];
       const batch = prepareSpellCompendium({documents, plans, sourcePack: chosen.id, targetPack, existing,
+        summonProfiles: await resolveResourceBindings(),
         sourceRuleset: selection.rules || chosen.sourceRuleset || undefined,
         identities: chosen.identities, generationId: newGenerationId()});
-      // No resource maps are guessed. The first UI path reports missing profiles;
-      // a verified provider can supply them through the core binding API.
+      // Only the configured provider can supply resource bindings. Availability
+      // rechecks its installed documents both here and after confirmation.
       for (const row of batch.rows.filter(row => row.status === 'prepared')) {
         const availability = await checkAvailability(row.requirements);
         if (availability?.available !== true) {

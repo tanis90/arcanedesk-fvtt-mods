@@ -1340,7 +1340,7 @@ function parameterExpansions(currentAction) {
   return expansions;
 }
 
-function resolveNativeSummonChoiceCardinality(currentArtifact, bindings, graphId) {
+function resolveNativeSummonChoiceCardinality(currentArtifact, bindings, graphId, parameters = []) {
   if (
     currentArtifact?.kind !== "entity"
     || currentArtifact.state?.cardinality?.type !== "profile-choice"
@@ -1348,6 +1348,11 @@ function resolveNativeSummonChoiceCardinality(currentArtifact, bindings, graphId
     return currentArtifact;
   }
   const selectionId = currentArtifact.state?.selection?.id;
+  // Runtime choices retain all validated profiles. The emitter must not silently
+  // turn the default into a fixed cardinality and discard the other choices.
+  if (parameters.some(parameter =>
+    parameter.id === selectionId && parameter.lowering === "runtime-default"
+  )) return currentArtifact;
   const selectedChoice = selectionId ? bindings?.[selectionId] : null;
   const profiles = (currentArtifact.state?.profiles ?? []).filter(profile =>
     profile.choice === selectedChoice
@@ -1367,6 +1372,9 @@ function resolveNativeSummonChoiceCardinality(currentArtifact, bindings, graphId
   ) || (
     cardinality?.type === "fixed-three"
     && cardinality?.count === 3
+  ) || (
+    cardinality?.type === "fixed-four"
+    && cardinality?.count === 4
   ) || (
     cardinality?.type === "fixed-group"
     && cardinality?.count === 5
@@ -2021,6 +2029,13 @@ function inferCanonicalNativeSummonHints(graph, explicit = {}, { contract } = {}
   const entities = (graph.artifacts ?? []).filter(current =>
     current.kind === "entity"
   );
+  const defaultSelections = (graph.actions ?? []).flatMap(current =>
+    (current.parameters ?? []).filter(parameter => parameter.lowering === "runtime-default")
+      .map(parameter => ({ actionId: current.id, parameter }))
+  );
+  if (defaultSelections.length && entities.length !== 1) {
+    throw new Error(`${graph.id} runtime-default selection requires one native summon entity`);
+  }
   if (entities.length === 0) {
     return mergeInferredLoweringHints(inferred, explicit);
   }
@@ -2057,6 +2072,13 @@ function inferCanonicalNativeSummonHints(graph, explicit = {}, { contract } = {}
   const actionValue = (graph.actions ?? []).find(current =>
     current.id === currentRule.on?.actionId
   );
+  if (defaultSelections.some(({ actionId, parameter }) =>
+    actionId !== actionValue?.id
+    || parameter.id !== entity.state?.selection?.id
+    || !parameter.values?.includes(parameter.defaultValue)
+  )) {
+    throw new Error(`${graph.id} runtime-default selection must belong to the entity creator and select a declared profile`);
+  }
   const targets = currentRule.targets ?? [];
   const operations = currentRule.do ?? [];
   const consumes = operations.filter(current =>
@@ -2066,6 +2088,12 @@ function inferCanonicalNativeSummonHints(graph, explicit = {}, { contract } = {}
     current.type === "create-artifact"
   );
   const selfTarget = targets[0];
+  const validSummonConsumption = contract?.level === 0
+    ? operations.length === 1 && consumes.length === 0
+      && operations[0]?.type === "create-artifact"
+    : operations.length === 2 && operations[0]?.type === "consume-resource"
+      && operations[1]?.type === "create-artifact" && consumes.length === 1
+      && consumes[0].resource === "spell-slot" && consumes[0].timing === "on-use";
   if (
     currentRule.on?.type !== "action-used"
     || !actionValue
@@ -2082,26 +2110,21 @@ function inferCanonicalNativeSummonHints(graph, explicit = {}, { contract } = {}
     || selfTarget.cardinality?.min !== 1
     || selfTarget.cardinality?.max !== 1
     || (selfTarget.predicates ?? []).length !== 0
-    || operations.length !== 2
-    || operations[0]?.type !== "consume-resource"
-    || operations[1]?.type !== "create-artifact"
-    || consumes.length !== 1
-    || consumes[0].resource !== "spell-slot"
-    || consumes[0].timing !== "on-use"
+    || !validSummonConsumption
     || creates.length !== 1
     || creates[0].artifactId !== entity.id
     || creates[0].target !== "source"
   ) {
     throw new Error(
       `${graph.id} native summon requires one unconditional public standalone self action, `
-      + "one on-use spell-slot consumption, and one source entity creation",
+      + "one source entity creation, and on-use spell-slot consumption only for leveled spells",
     );
   }
 
   const selectionParameterId = entity.state?.selection?.id ?? null;
   const enumParameters = (actionValue.parameters ?? []).filter(current =>
     current.type === "enum"
-    && current.lowering === "named-actions"
+    && ["named-actions", "runtime-default"].includes(current.lowering)
   );
   const allParameters = actionValue.parameters ?? [];
   if (selectionParameterId === null) {
@@ -2128,7 +2151,7 @@ function inferCanonicalNativeSummonHints(graph, explicit = {}, { contract } = {}
       || stableStringify(selection.labels ?? {}) !== stableStringify(expectedLabels)
     ) {
       throw new Error(
-        `${graph.id} native summon named actions must exactly match ordered pool choices and labels`,
+        `${graph.id} native summon selections must exactly match ordered pool choices and labels`,
       );
     }
   }
@@ -2145,12 +2168,13 @@ function inferCanonicalNativeSummonHints(graph, explicit = {}, { contract } = {}
           (cardinality?.type === "single" && cardinality?.count === 1)
           || (cardinality?.type === "fixed-small" && cardinality?.count === 2)
           || (cardinality?.type === "fixed-three" && cardinality?.count === 3)
+          || (cardinality?.type === "fixed-four" && cardinality?.count === 4)
           || (cardinality?.type === "fixed-group" && cardinality?.count === 5)
         );
       })
     ) {
       throw new Error(
-        `${graph.id} native summon profile-choice cardinality must resolve to canonical single/1, fixed-small/2, fixed-three/3, or fixed-group/5 choices`,
+        `${graph.id} native summon profile-choice cardinality must resolve to canonical single/1, fixed-small/2, fixed-three/3, fixed-four/4, or fixed-group/5 choices`,
       );
     }
   } else if (
@@ -2158,6 +2182,7 @@ function inferCanonicalNativeSummonHints(graph, explicit = {}, { contract } = {}
       (entityCardinality?.type === "single" && entityCardinality?.count === 1)
       || (entityCardinality?.type === "fixed-small" && entityCardinality?.count === 2)
       || (entityCardinality?.type === "fixed-three" && entityCardinality?.count === 3)
+      || (entityCardinality?.type === "fixed-four" && entityCardinality?.count === 4)
       || (entityCardinality?.type === "fixed-group" && entityCardinality?.count === 5)
     )
     || profiles.length !== 1
@@ -8268,6 +8293,7 @@ export function lowerSemanticGraph(graph, loweringHints = {}, {
           substituteBindings(sourceArtifact, expansion.bindings),
           expansion.bindings,
           graph.id,
+          currentAction.parameters,
         );
         const semanticId = usedKeys.length > 0
           ? `${sourceArtifact.id}:${usedKeys.map(key => expansion.bindings[key]).join(":")}`
@@ -8352,12 +8378,14 @@ export function lowerSemanticGraph(graph, loweringHints = {}, {
         requiredSelections: (currentAction.parameters ?? [])
           .filter(parameter =>
             parameter.type === "enum"
-            && parameter.lowering === "runtime-required"
+            && ["runtime-required", "runtime-default"].includes(parameter.lowering)
           )
           .map(parameter => ({
             id: parameter.id,
             type: "enum",
-            required: true,
+            required: parameter.lowering === "runtime-required",
+            ...(parameter.lowering === "runtime-default"
+              ? { defaultValue: parameter.defaultValue } : {}),
             values: parameter.values.map(value => ({
               value,
               label: parameter.labels?.[value] ?? value,
@@ -8472,6 +8500,13 @@ export function lowerSemanticGraph(graph, loweringHints = {}, {
     ? {
         ...clone(script),
         handlers: (script.handlers ?? []).map(handler => {
+          if (handler.event === "damage-die-selection") {
+            const sourceRule = graph.rules.find(rule => rule.id === handler.runtimeRuleId);
+            if (!sourceRule || ruleProvider(sourceRule, graph, loweringHints) !== "dnd5e-midi-native") {
+              throw new Error(`${graph.id} damage die selection requires a native damage Activity`);
+            }
+            return {...clone(handler), semanticActionId: sourceRule.on.actionId};
+          }
           const runtimeRule = runtimeRules.find(rule =>
             rule.id === (handler.runtimeRuleId ?? handler.ruleId)
           );

@@ -3,6 +3,21 @@ import assert from "node:assert/strict";
 import {previewSpellSources, extractSpellPresentation, describePresentationDependencies} from "../src/sources.mjs";
 
 const catalogue = [{id: "bless", level: 1}, {id: "harm", level: 6}];
+
+test('zero-level sources match without relaxing ruleset or level identity', () => {
+  const documents = [{_id: 'originalCantrip1', name: 'Original light', type: 'spell',
+    system: {identifier: 'light', level: 0, source: {rules: '2014'}}}];
+  const before = structuredClone(documents);
+  const options = {documents, catalogue: [{id: 'light', level: 0}]};
+  assert.equal(previewSpellSources(options).rows[0].status, 'matched');
+  assert.deepEqual(documents, before);
+  documents[0].system.level = 1;
+  assert.equal(previewSpellSources(options).rows[0].reason, 'conflicting-level');
+  documents[0].system.level = 0;
+  documents[0].system.source.rules = '2024';
+  assert.equal(previewSpellSources(options).rows[0].reason, 'unsupported-or-unknown-ruleset');
+  assert.throws(() => previewSpellSources({...options, catalogue: [{id: 'light', level: -1}]}), /Invalid/);
+});
 const spell = (changes = {}) => ({_id: "original1", name: "原创测试名称", type: "spell",
   system: {identifier: "bless", level: 1, source: {rules: "2014"}}, ...changes});
 const preview = (documents, options = {}) => previewSpellSources({documents, catalogue, ...options});

@@ -18,7 +18,7 @@ const context = vm.createContext({TextEncoder, TextDecoder, structuredClone});
 new vm.Script(bundled.outputFiles[0].text).runInContext(context);
 const {bindSpellContent} = context.ArcaneBinding;
 let spells = 0, missingResources = 0;
-for (const definition of Object.values(spellAutomationSpecs).filter(def => def.contract.level >= 1 && def.contract.level <= 6)) {
+for (const definition of Object.values(spellAutomationSpecs).filter(def => def.contract.level >= 0 && def.contract.level <= 6)) {
   const plan = JSON.parse(JSON.stringify(compileSpellPlan(definition)));
   const requirements = describeSpellRequirements(plan);
   const source = {_id: 'originalSource01', name: 'Original fixture', type: 'spell', img: 'icons/svg/book.svg',
@@ -63,7 +63,7 @@ for (const definition of Object.values(spellAutomationSpecs).filter(def => def.c
   }
   spells++;
 }
-assert.equal(spells, 167); assert.equal(missingResources, 8);
+assert.equal(spells, 187); assert.equal(missingResources, 9);
 console.log(JSON.stringify({browserBinding: spells, missingResourceCases: missingResources,
   browserBundleBytes: bundled.outputFiles[0].contents.length, nodeCompilerInBundle: false,
   sourceDocumentsUnchanged: true, realFoundryWorld: false}));

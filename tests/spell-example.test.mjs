@@ -13,7 +13,7 @@ test('documented single and all-spell examples compile without content and prote
   try {
     assert.equal(run('fireball', 'one.json').bound, 1);
     const all = run('--all', 'all.json');
-    assert.equal(all.compiled, 167); assert.equal(all.bound, 159); assert.equal(all.unbound.length, 8);
+    assert.equal(all.compiled, 187); assert.equal(all.bound, 178); assert.equal(all.unbound.length, 9);
     const before = await fs.readFile(path.join(directory, 'one.json'));
     assert.throws(() => run('harm', 'one.json'), /EEXIST/);
     assert.deepEqual(await fs.readFile(path.join(directory, 'one.json')), before);
