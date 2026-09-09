@@ -5,11 +5,11 @@ import {readPerSpellScriptSource} from '../src/index.mjs';
 import {spellAutomationSpecs,spellAutomationCompiledIds,composeRegisteredSpell,summonProfileIdentities,perSpellScriptRegistry} from '../src/index.mjs';
 
 test('the complete migrated registry and companion dependencies load',()=>{
-  assert.equal(Object.keys(spellAutomationSpecs).length,186);
-  assert.equal(spellAutomationCompiledIds.length,186);
+  assert.equal(Object.keys(spellAutomationSpecs).length,187);
+  assert.equal(spellAutomationCompiledIds.length,187);
   assert.equal(summonProfileIdentities.length,22);
   for(const identity of summonProfileIdentities)assert.deepEqual(Object.keys(identity).sort(),['documentId','profileId','recipeId','revision','summonUsage']);
-  assert.deepEqual(Object.keys(perSpellScriptRegistry).sort(),['banishing-smite','harm']);
+  assert.deepEqual(Object.keys(perSpellScriptRegistry).sort(),['banishing-smite','harm','toll-the-dead']);
 });
 
 for(const id of spellAutomationCompiledIds)test(`${id}: caller descriptions do not alter compiled mechanics`,()=>{

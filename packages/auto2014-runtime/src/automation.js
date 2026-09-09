@@ -1,4 +1,5 @@
 const MODULE_ID = "arcane-dnd5e-2014-automation";
+const COMPILER_MOVEMENT_SUPPRESSION_ACTORS = new WeakSet();
 const NATIVE_SUMMON_MARKER_KEYS = Object.freeze([
   "provider",
   "humanStep",
@@ -12,6 +13,7 @@ const NATIVE_SUMMON_MARKER_KEYS = Object.freeze([
   "uniqueness",
 ]);
 const NATIVE_SUMMON_INVOCATIONS = new Map();
+const NATIVE_SUMMON_RESOURCE_CHECKS = new Map();
 let NATIVE_SUMMON_COMBAT_CLEANUP_QUEUE = Promise.resolve();
 const NATIVE_SUMMON_CONTROL_VERSION = 1;
 const NATIVE_SUMMON_CONTROL_RECEIPTS_FLAG = "nativeSummonControlReceipts";
@@ -687,7 +689,7 @@ function nativeSummonActivityUuid(activity) {
     : "";
 }
 
-function nativeSummonContract(activity) {
+function nativeSummonContract(activity, selectedNativeProfileId = null) {
   const marker = activity?.flags?.[MODULE_ID]?.nativeSummon;
   if (marker === undefined || marker === null) return null;
   if (!marker || typeof marker !== "object" || Array.isArray(marker)) {
@@ -697,6 +699,8 @@ function nativeSummonContract(activity) {
   const expectedKeys = [
     ...NATIVE_SUMMON_MARKER_KEYS,
     ...(marker.control === undefined ? [] : ["control"]),
+    ...(marker.combat === undefined ? [] : ["combat"]),
+    ...(marker.selection === undefined ? [] : ["selection"]),
   ].sort();
   if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
     throw new Error(
@@ -752,8 +756,11 @@ function nativeSummonContract(activity) {
     throw new Error("native summon marker revision must be a positive integer");
   }
   const expectedCount = Number(marker.expectedCount);
-  if (!Number.isInteger(expectedCount) || ![1, 2, 3, 5].includes(expectedCount)) {
-    throw new Error("native summon expectedCount must be one, two, three, or five");
+  if (marker.combat !== undefined && marker.combat !== "none") {
+    throw new Error("native summon optional combat policy must be none");
+  }
+  if (!Number.isInteger(expectedCount) || ![1, 2, 3, 4, 5].includes(expectedCount)) {
+    throw new Error("native summon expectedCount must be one through five");
   }
   if (
     marker.uniqueness !== null
@@ -780,6 +787,51 @@ function nativeSummonContract(activity) {
     throw new Error("native summon root lifecycle and live guard must be declared together");
   }
   const profiles = Array.from(activity?.profiles ?? []);
+  if (marker.selection !== undefined) {
+    const selection = marker.selection;
+    if (!selection || typeof selection !== "object" || Array.isArray(selection)
+      || JSON.stringify(Object.keys(selection).sort()) !== JSON.stringify(["choices", "defaultValue", "id", "version"])
+      || selection.version !== 1 || typeof selection.id !== "string" || !selection.id.trim()
+      || typeof selection.defaultValue !== "string"
+      || !Array.isArray(selection.choices) || selection.choices.length < 1
+      || profiles.length !== selection.choices.length
+      || new Set(selection.choices.map(choice => choice?.value)).size !== selection.choices.length
+      || new Set(selection.choices.map(choice => choice?.nativeProfileId)).size !== selection.choices.length
+    ) throw new Error("native summon selection is outside the closed profile-choice contract");
+    for (let index = 0; index < selection.choices.length; index += 1) {
+      const choice = selection.choices[index];
+      const profile = profiles[index];
+      if (!choice || typeof choice !== "object" || Array.isArray(choice)
+        || JSON.stringify(Object.keys(choice).sort()) !== JSON.stringify([
+          "actorUuid", "documentId", "expectedCount", "nativeProfileId", "profileId", "revision", "value",
+        ])
+        || ["value", "nativeProfileId", "profileId", "documentId", "actorUuid"].some(key =>
+          typeof choice[key] !== "string" || !choice[key].trim())
+        || !Number.isInteger(choice.revision) || choice.revision < 1
+        || ![1, 2, 3, 4, 5].includes(choice.expectedCount)
+        || profile?._id !== choice.nativeProfileId
+        || String(profile?.count) !== String(choice.expectedCount)
+        || profile?.uuid !== choice.actorUuid
+        || String(profile?.uuid ?? "").split(".").at(-1) !== choice.documentId
+      ) throw new Error("native summon choice/profile identity or count drifted");
+    }
+    const defaultChoice = selection.choices[0];
+    if (defaultChoice.value !== selection.defaultValue
+      || marker.choice !== defaultChoice.value
+      || ["profileId", "revision", "documentId", "expectedCount"].some(key => marker[key] !== defaultChoice[key])
+      || activity?.summon?.prompt !== true
+    ) throw new Error("native summon default profile drifted from its marker");
+    const selected = selectedNativeProfileId === null ? defaultChoice
+      : selection.choices.find(choice => choice.nativeProfileId === selectedNativeProfileId);
+    if (!selected) throw new Error("native summon selected an undeclared native profile");
+    return {
+      marker: {...foundry.utils.deepClone(marker), choice: selected.value,
+        profileId: selected.profileId, revision: selected.revision,
+        documentId: selected.documentId, expectedCount: selected.expectedCount},
+      nativeProfileId: selected.nativeProfileId,
+      expectedCount: selected.expectedCount,
+    };
+  }
   if (profiles.length !== 1) {
     throw new Error("native summon Activity must expose exactly one native profile");
   }
@@ -790,6 +842,7 @@ function nativeSummonContract(activity) {
     || Number(profile?.count || 1) !== expectedCount
     || profileDocumentId !== marker.documentId
     || activity?.summon?.prompt !== true
+    || (selectedNativeProfileId !== null && selectedNativeProfileId !== String(profile?._id))
   ) {
     throw new Error("native summon Activity profile/count/prompt drifted from its marker");
   }
@@ -798,6 +851,31 @@ function nativeSummonContract(activity) {
     nativeProfileId: String(profile._id),
     expectedCount,
   };
+}
+
+function assertNativeSummonInvocationContract(record, contract) {
+  if (!record || JSON.stringify(record.contract) !== JSON.stringify(contract)) {
+    throw new Error("native summon selected contract drifted from its original invocation");
+  }
+}
+
+function nativeSummonUseContract(activity, usageConfig = {}) {
+  const base = nativeSummonContract(activity);
+  if (!base) return null;
+  const selection = base.marker.selection;
+  if (!selection) return nativeSummonContract(activity, usageConfig?.summons?.profile ?? null);
+  const values = compilerRuntimeSelections(usageConfig, usageConfig?.workflow);
+  if (Object.keys(values).some(id => id !== selection.id)) {
+    throw new Error("native summon received an unknown typed selection");
+  }
+  const hasValue = Object.prototype.hasOwnProperty.call(values, selection.id);
+  const choice = hasValue ? selection.choices.find(current => current.value === values[selection.id]) : null;
+  if (hasValue && !choice) throw new Error("native summon received an invalid typed selection");
+  const nativeProfileId = usageConfig?.summons?.profile ?? choice?.nativeProfileId ?? null;
+  if (choice && nativeProfileId !== choice.nativeProfileId) {
+    throw new Error("native summon typed selection disagrees with the native profile");
+  }
+  return nativeSummonContract(activity, nativeProfileId);
 }
 
 function nativeSummonRequestId(value, { create = false } = {}) {
@@ -910,6 +988,42 @@ function nativeSummonProvenance(token) {
     ?? null;
 }
 
+function nativeLightCarrierOwnershipActor(sheet) {
+  if (!game.user?.isGM) return null;
+  const actor = sheet?.actor;
+  const token = actor?.token;
+  const carrier = actor?.flags?.["arcane-spells-2014"]?.carrier;
+  const provenance = nativeSummonProvenance(token);
+  if (!actor?.isToken || token?.actorLink !== false || token.actor !== actor
+    || token.parent?.tokens?.get(token.id) !== token
+    || carrier?.recipeId !== "light-only"
+    || !provenance?.requestId || !provenance?.sourceActorUuid
+    || carrier.profileId !== provenance.profileId) return null;
+  return actor;
+}
+
+function addNativeLightCarrierOwnershipControl(sheet, controls) {
+  const actor = nativeLightCarrierOwnershipActor(sheet);
+  const OwnershipConfig = globalThis.foundry?.applications?.apps?.DocumentOwnershipConfig;
+  if (!actor || !Array.isArray(controls) || typeof OwnershipConfig !== "function"
+    || controls.some(control => control.action === "arcaneLightOwnership")) return;
+  controls.push({action: "arcaneLightOwnership", icon: "fa-solid fa-user-lock",
+    label: "Configure light control",
+    onClick: async () => {
+      // Recheck the exact synthetic Actor on click: the light may have expired
+      // while the sheet was open, or the user may no longer be a GM.
+      if (nativeLightCarrierOwnershipActor(sheet) !== actor) return;
+      try {
+        await new OwnershipConfig({document: actor}).render(true);
+      } catch (error) {
+        ui.notifications?.warn(String(error?.message ?? error));
+      }
+    },
+  });
+}
+
+Hooks.on("getHeaderControlsActorSheetV2", addNativeLightCarrierOwnershipControl);
+
 function nativeSummonOwnedTokens(predicate = () => true) {
   const matches = [];
   for (const scene of game.scenes ?? []) {
@@ -962,9 +1076,81 @@ function pruneNativeSummonInvocations(now = Date.now()) {
   }
 }
 
-function prepareNativeSummonUse(activity, usageConfig = {}) {
-  const contract = nativeSummonContract(activity);
+function nativeSummonResourceSignature(activity) {
+  return JSON.stringify({activity: nativeSummonActivityUuid(activity),
+    actor: activity?.actor?.uuid, item: activity?.item?.uuid,
+    marker: activity?.flags?.[MODULE_ID]?.nativeSummon,
+    profiles: Array.from(activity?.profiles ?? []).map(profile => ({
+      id: profile._id, uuid: profile.uuid, count: profile.count,
+    }))});
+}
+
+function assertNativeSummonResourceDocument(activity, profile, document) {
+  const contract = nativeSummonContract(activity, profile._id);
+  if (document?.documentName !== "Actor" || document.id !== contract.marker.documentId
+    || document.uuid !== profile.uuid) {
+    throw new Error("Native summon Actor resource is missing: " + profile.uuid);
+  }
+  if (contract.marker.combat === "none") {
+    const data = document.toObject();
+    const identity = data.flags?.["arcane-spells-2014"]?.carrier;
+    const token = data.prototypeToken;
+    if (identity?.profileId !== contract.marker.profileId
+      || identity?.revision !== contract.marker.revision
+      || identity?.documentId !== contract.marker.documentId
+      || identity?.recipeId !== "light-only"
+      || data.type !== "npc" || token?.actorLink !== false
+      || token?.light?.bright !== 0 || token?.light?.dim !== 10
+      || token?.sight?.enabled !== false
+      || data.items?.length !== 0 || data.effects?.length !== 0) {
+      throw new Error("Native summon light carrier differs from its resource contract");
+    }
+  }
+}
+
+async function prepareNativeSummonResourceCheck(activity, usageConfig = {}) {
+  if (!activity?.flags?.[MODULE_ID]?.nativeSummon) return;
+  for (const [key, entry] of NATIVE_SUMMON_RESOURCE_CHECKS) {
+    if (Date.now() - entry.createdAt > 10 * 60 * 1000) NATIVE_SUMMON_RESOURCE_CHECKS.delete(key);
+  }
+  const key = foundry.utils.randomID();
+  usageConfig.arcaneNativeResourceCheckId = key;
+  const record = {createdAt: Date.now(), signature: nativeSummonResourceSignature(activity), documents: new Map()};
+  NATIVE_SUMMON_RESOURCE_CHECKS.set(key, record);
+  try {
+    nativeSummonContract(activity);
+    for (const profile of Array.from(activity.profiles ?? [])) {
+      if (!record.documents.has(profile.uuid)) {
+        record.documents.set(profile.uuid, await fromUuid(profile.uuid));
+      }
+      assertNativeSummonResourceDocument(activity, profile, record.documents.get(profile.uuid));
+    }
+  } catch (error) {
+    record.error = String(error?.message ?? error);
+  }
+  // Do not abort Midi here: the synchronous pre-use gate publishes the exact
+  // no-consumption rejection through the existing native summon contract.
+}
+
+function assertNativeSummonResourceCheck(activity, usageConfig = {}) {
+  const record = NATIVE_SUMMON_RESOURCE_CHECKS.get(usageConfig.arcaneNativeResourceCheckId);
+  if (!record || Date.now() - record.createdAt > 10 * 60 * 1000
+    || record.signature !== nativeSummonResourceSignature(activity)) {
+    throw new Error("Native summon requires a current resource check for this exact Activity");
+  }
+  if (record.error) throw new Error(record.error);
+  for (const profile of Array.from(activity.profiles ?? [])) {
+    assertNativeSummonResourceDocument(activity, profile, record.documents.get(profile.uuid));
+  }
+}
+
+function prepareNativeSummonUse(activity, usageConfig = {}, dialogConfig = {}) {
+  const contract = nativeSummonUseContract(activity, usageConfig);
   if (!contract) return true;
+  assertNativeSummonResourceCheck(activity, usageConfig);
+  const nativeDialogSelection = Boolean(contract.marker.selection)
+    && dialogConfig.configure === true
+    && Object.keys(compilerRuntimeSelections(usageConfig, usageConfig?.workflow)).length === 0;
   if (!game.user?.isGM) {
     throw new Error("native summon Activity use must execute in the GM browser session");
   }
@@ -1010,7 +1196,9 @@ function prepareNativeSummonUse(activity, usageConfig = {}) {
   if (sourceToken.parent?.uuid !== canvas.scene?.uuid) {
     throw new Error("native summon source Token must belong to the viewed Scene");
   }
-  const source = nativeSummonSourceCombatant(sourceToken);
+  const source = contract.marker.combat === "none"
+    ? null
+    : nativeSummonSourceCombatant(sourceToken);
   const sourceProvenance = nativeSummonProvenance(sourceToken);
   let inheritedRootEffect = null;
   if (sourceProvenance?.rootConcentrationEffectUuid) {
@@ -1049,11 +1237,13 @@ function prepareNativeSummonUse(activity, usageConfig = {}) {
     sourceActorUuid: activity.actor.uuid,
     sourceTokenUuid: sourceToken.uuid,
     sourceItemUuid: activity.item.uuid,
-    combatUuid: source.combat.uuid,
-    sourceCombatantUuid: source.combatant.uuid,
-    inheritedInitiative: source.initiative,
+    combatUuid: source?.combat.uuid ?? null,
+    sourceCombatantUuid: source?.combatant.uuid ?? null,
+    inheritedInitiative: source?.initiative ?? null,
     ownerUserId: nativeSummonUniqueActiveOwner(activity.actor),
     contract,
+    nativeDialogSelection,
+    selectionFinalized: false,
     sourceProvenance: sourceProvenance
       ? foundry.utils.deepClone(sourceProvenance)
       : null,
@@ -1101,8 +1291,35 @@ function cancelNativeSummonUse(input) {
   return true;
 }
 
+function finalizeNativeSummonSelection(activity, usageConfig = {}) {
+  const contract = nativeSummonUseContract(activity, usageConfig);
+  if (!contract) return true;
+  assertNativeSummonResourceCheck(activity, usageConfig);
+  const requestId = String(usageConfig?.summons?.arcaneNativeRequestId ?? "");
+  const record = NATIVE_SUMMON_INVOCATIONS.get(requestId);
+  if (!record || record.activityUuid !== nativeSummonActivityUuid(activity)
+    || record.sourceActorUuid !== activity?.actor?.uuid
+    || record.sourceItemUuid !== activity?.item?.uuid) {
+    throw new Error("native summon consumption lacks its original invocation");
+  }
+  if (record.nativeDialogSelection && !record.selectionFinalized) {
+    if (record.preparedCount || record.postSummonSeen || record.postUseSeen
+      || record.finalizePromise || record.receipt) {
+      throw new Error("native summon selection cannot change after placement or use");
+    }
+    // The dialog may choose another member of the original, unchanged mapping.
+    assertNativeSummonInvocationContract(record,
+      nativeSummonContract(activity, record.contract.nativeProfileId));
+    record.contract = contract;
+  } else {
+    assertNativeSummonInvocationContract(record, contract);
+  }
+  record.selectionFinalized = true;
+  return true;
+}
+
 function guardNativeSummonPlacement(activity, profile, options = {}) {
-  const contract = nativeSummonContract(activity);
+  const contract = nativeSummonContract(activity, profile?._id ?? null);
   if (!contract) return true;
   const requestId = String(options?.arcaneNativeRequestId ?? "").trim();
   const record = requestId ? NATIVE_SUMMON_INVOCATIONS.get(requestId) : null;
@@ -1117,6 +1334,7 @@ function guardNativeSummonPlacement(activity, profile, options = {}) {
     );
     return false;
   }
+  assertNativeSummonInvocationContract(record, contract);
   return true;
 }
 
@@ -1230,7 +1448,7 @@ function nativeSummonCanonicalTokens(record, tokens, stage) {
 }
 
 function prepareNativeSummonTokenData(activity, profile, tokenData, options = {}) {
-  const contract = nativeSummonContract(activity);
+  const contract = nativeSummonContract(activity, profile?._id ?? null);
   if (!contract) return;
   const requestId = nativeSummonRequestId(options?.arcaneNativeRequestId);
   const record = NATIVE_SUMMON_INVOCATIONS.get(requestId);
@@ -1241,6 +1459,7 @@ function prepareNativeSummonTokenData(activity, profile, tokenData, options = {}
   ) {
     throw new Error("native summon token data lacks its exact invocation");
   }
+  assertNativeSummonInvocationContract(record, contract);
   if (tokenData?.actorLink !== false) {
     throw new Error("native summon profiles must produce unlinked Token ActorDelta documents");
   }
@@ -1266,7 +1485,7 @@ function prepareNativeSummonTokenData(activity, profile, tokenData, options = {}
 }
 
 function captureNativeSummonTokens(activity, profile, tokens, options = {}) {
-  const contract = nativeSummonContract(activity);
+  const contract = nativeSummonContract(activity, profile?._id ?? null);
   if (!contract) return;
   const requestId = nativeSummonRequestId(options?.arcaneNativeRequestId);
   const record = NATIVE_SUMMON_INVOCATIONS.get(requestId);
@@ -1278,6 +1497,7 @@ function captureNativeSummonTokens(activity, profile, tokens, options = {}) {
   ) {
     throw new Error("native summon postSummon hook lacks its exact invocation");
   }
+  assertNativeSummonInvocationContract(record, contract);
   const created = nativeSummonCanonicalTokens(record, tokens, "postSummon");
   if (created.length !== record.preparedCount) {
     throw new Error("native summon postSummon returned an invalid Token batch");
@@ -1391,7 +1611,7 @@ function bindNativeSummonPostUseWorkflow(record, usageConfig, messageUuid) {
 }
 
 function captureNativeSummonPostUse(activity, usageConfig = {}, results = {}) {
-  const contract = nativeSummonContract(activity);
+  const contract = nativeSummonUseContract(activity, usageConfig);
   if (!contract) return true;
   const requestId = nativeSummonRequestId(
     usageConfig?.summons?.arcaneNativeRequestId,
@@ -1404,6 +1624,7 @@ function captureNativeSummonPostUse(activity, usageConfig = {}, results = {}) {
   ) {
     throw new Error("native summon postUseActivity hook lacks its exact invocation");
   }
+  assertNativeSummonInvocationContract(record, contract);
   const created = nativeSummonCanonicalTokens(record, results?.summoned, "postUseActivity");
   const createdTokenUuids = created.map(token => token.uuid);
   if (
@@ -1490,6 +1711,8 @@ async function finalizeNativeSummonFromWorkflow(workflow) {
       if (!record || !record.postUseSeen) {
         throw new Error("native summon workflow finalizer lacks its exact postUseActivity invocation");
       }
+      assertNativeSummonInvocationContract(record,
+        nativeSummonContract(activity, record.contract.nativeProfileId));
       if (!workflow.__arcaneNativeSummonBinding) {
         throw new Error("native summon workflow lacks its exact postUseActivity binding");
       }
@@ -2245,19 +2468,25 @@ async function finalizeNativeSummonCore(record, input) {
   const tokens = await nativeSummonResolveCreatedTokens(record, input.createdTokenUuids);
   await nativeSummonApplyOwnershipAndProvenance(record, tokens);
   const lifecycle = await nativeSummonBindLifecycle(record, tokens);
-  const combat = await fromUuid(record.combatUuid).catch(() => null);
+  const noncombat = record.contract.marker.combat === "none";
+  const combat = noncombat ? null : await fromUuid(record.combatUuid).catch(() => null);
   if (
-    combat?.documentName !== "Combat"
+    !noncombat && (combat?.documentName !== "Combat"
     || combat.active !== true
     || (
       tokens.length > 0
       && combat.scene?.uuid !== tokens[0]?.parent?.uuid
-    )
+    ))
   ) {
     throw new Error("native summon active Combat no longer matches the returned Token batch");
   }
   const replacements = nativeSummonReplacementTokens(record, tokens);
-  const mutation = await nativeSummonMutateCombatPreservingCursor(
+  if (noncombat && tokens.some(token => Array.from(game.combats ?? []).some(candidate =>
+    nativeSummonCombatantsForToken(candidate, token).length > 0
+  ))) {
+    throw new Error("noncombat native summon unexpectedly belongs to a Combat");
+  }
+  const mutation = noncombat ? { combatants: [] } : await nativeSummonMutateCombatPreservingCursor(
     combat,
     async snapshot => {
       const combatants = await nativeSummonEnsureCombatants(record, combat, tokens);
@@ -2284,7 +2513,7 @@ async function finalizeNativeSummonCore(record, input) {
   const otherCombatants = [];
   for (const replacement of replacements) {
     for (const candidate of game.combats ?? []) {
-      if (candidate.uuid === combat.uuid) continue;
+      if (candidate.uuid === combat?.uuid) continue;
       for (const combatant of nativeSummonCombatantsForToken(candidate, replacement.token)) {
         otherCombatants.push({ combat: candidate, combatant });
       }
@@ -2334,6 +2563,7 @@ async function finalizeNativeSummonCore(record, input) {
     })),
     sourceCombatantUuid: record.sourceCombatantUuid,
     inheritedInitiative: record.inheritedInitiative,
+    ...(noncombat ? { combat: "none" } : {}),
     lifecycle,
     retry: false,
   };
@@ -3313,6 +3543,38 @@ function preflightCompilerSelectionCardinality(activity, usageConfig, workflow =
   return true;
 }
 
+function preflightCompilerSelectedTargetRange(activity, usageConfig, workflow = null) {
+  const parsed = parseCompilerSelectionCardinality(activity);
+  if (!parsed.cardinality) return true;
+  const range = activity?.range;
+  if (range?.units !== "touch" && !range?.value && !range?.reach && !range?.long) return true;
+  const checkRange = globalThis.MidiQOL?.checkActivityRange;
+  if (typeof checkRange !== "function") {
+    throw compilerSelectionCardinalityFailure("Activity range checker is unavailable", "ACTION_MISCONFIGURED");
+  }
+  let source;
+  try {
+    source = nativeSummonSourceToken(activity, usageConfig);
+  } catch (_error) {
+    throw compilerSelectionCardinalityFailure("Selected-target action requires an unambiguous source Token", "ACTION_MISCONFIGURED");
+  }
+  if (!source?.actor?.uuid || source.actor.uuid !== activity?.actor?.uuid
+    || source.parent?.uuid !== canvas.scene?.uuid) {
+    throw compilerSelectionCardinalityFailure("Source Token does not match this Activity in the viewed Scene", "ACTION_MISCONFIGURED");
+  }
+  const targets = targetsFromUseConfig(workflow, usageConfig);
+  // Share Midi's supported range/line-of-effect policy with the Context adapter;
+  // do not invent a second touch, reach, wall or long-range implementation.
+  const result = checkRange(activity, source.object ?? source, new Set(targets), false)?.result;
+  if (result === "fail") {
+    throw compilerSelectionCardinalityFailure("Target selection is outside the action's allowed range or line of effect");
+  }
+  if (result !== "normal" && result !== "dis") {
+    throw compilerSelectionCardinalityFailure("Activity range check did not return a supported result", "ACTION_MISCONFIGURED");
+  }
+  return true;
+}
+
 function workflowSemanticActionId(workflow) {
   const activity = workflow?.activity;
   return activity?.getFlag?.(MODULE_ID, "semanticActionId")
@@ -4127,7 +4389,9 @@ function preflightRequiredCompilerSelections(item, activity, workflow) {
   }
   for (const definition of definitions) {
     const id = String(definition?.id ?? "");
-    const value = selections?.[id];
+    const value = Object.prototype.hasOwnProperty.call(selections, id)
+      ? selections[id]
+      : definition.required === false ? definition.defaultValue : undefined;
     const allowed = Array.from(definition?.values ?? []).map(entry =>
       String(entry?.value ?? "")
     );
@@ -4681,7 +4945,7 @@ function actorCharacterLevel(actor) {
     , 0);
 }
 
-function ownedWeaponAttackCantripFormula(expression, actor, spellItem) {
+function ownedWeaponAttackCantripFormula(expression, actor, spellItem, damageType) {
   if (expression?.type !== "cantrip-progression") return "";
   const systemCantripLevel = Number(
     actor?.system?.cantripLevel?.(spellItem),
@@ -4703,7 +4967,10 @@ function ownedWeaponAttackCantripFormula(expression, actor, spellItem) {
       () => runtimeValueExpressionFormula(expression.increment, context),
     ),
   ].filter(value => value && value !== "0");
-  return terms.join("+");
+  // Native damage rolls inherit the weapon type for every unflavored term.
+  // Flavor each growth term before joining; a trailing flavor covers only
+  // the final die and breaks immunity/resistance at higher character levels.
+  return terms.map(value => value + "[" + damageType + "]").join("+");
 }
 
 function resolveOwnedWeaponAttack(actor, spellItem, activity) {
@@ -4793,6 +5060,7 @@ function preflightOwnedWeaponAttack(actor, item, activity) {
     if (resolved?.weapon && resolved?.activity) return null;
     return {
       kind: "owned-weapon-attack",
+      code: "ACTION_BLOCKED",
       message:
         (actor?.name ?? "Actor")
         + " has no equipped melee weapon with a usable attack activity.",
@@ -4800,6 +5068,7 @@ function preflightOwnedWeaponAttack(actor, item, activity) {
   } catch (error) {
     return {
       kind: "owned-weapon-attack",
+      code: "ACTION_MISCONFIGURED",
       message: "Owned weapon attack preflight failed.",
       error,
     };
@@ -4910,6 +5179,7 @@ async function applyOwnedWeaponAttackFromUse(item, usageConfig, workflow) {
     damage?.formulaExpression,
     workflow.actor ?? item.actor,
     item,
+    damage?.damageTypes?.[0],
   );
   let damageEffect = null;
   if (formula) {
@@ -4923,7 +5193,7 @@ async function applyOwnedWeaponAttackFromUse(item, usageConfig, workflow) {
         changes: [{
           key: "system.bonuses.mwak.damage",
           mode: 2,
-          value: formula + "[thunder]",
+          value: formula,
           priority: 20,
         }],
         flags: {
@@ -7120,6 +7390,7 @@ function compilerWeaponEnchantmentPreflight(actor, item, activity) {
       });
       if (!targetItem) {
         return {
+          code: "ACTION_BLOCKED",
           message:
             (item?.name ?? "Weapon enchantment")
             + " found no equipped weapon matching its compiler-owned query.",
@@ -7129,6 +7400,7 @@ function compilerWeaponEnchantmentPreflight(actor, item, activity) {
     return null;
   } catch (error) {
     return {
+      code: "ACTION_MISCONFIGURED",
       message:
         (item?.name ?? "Weapon enchantment")
         + " cannot start because its compiler runtime contract is invalid.",
@@ -9241,6 +9513,76 @@ async function invokePerSpellScriptTransaction(
   PER_SPELL_SCRIPT_TRANSACTIONS.set(transactionKey, record);
   prunePerSpellScriptTransactions();
   return record.promise;
+}
+
+const PER_SPELL_DAMAGE_CONFIGS = new WeakMap();
+
+// A synchronous preparation event owns only this caller's roll configuration.
+// World-document writers continue to use the primary-GM dispatcher below.
+function perSpellDamageDieBinding(activity, workflow = null) {
+  const item = activity?.item ?? workflow?.item;
+  const plan = perSpellScriptPlan(item);
+  const semanticActionId = activity?.flags?.[MODULE_ID]?.semanticActionId;
+  const handlers = (plan?.handlers ?? []).filter(handler =>
+    handler.event === "damage-die-selection" && handler.semanticActionId === semanticActionId
+  );
+  if (!handlers.length) return null;
+  if (handlers.length !== 1 || plan.id !== item?.system?.identifier) {
+    throw new Error("Invalid damage die selection source");
+  }
+  const handler = handlers[0];
+  const registration = PER_SPELL_SCRIPT_REGISTRY.get(plan.id);
+  const invoke = registration?.handlers?.[handler.id];
+  if (handler.authority !== "damage-roll-caller"
+    || Number(registration?.version) !== Number(plan.version) || typeof invoke !== "function") {
+    throw new Error("Damage die selection script is unavailable or mismatched");
+  }
+  return {item, plan, handler, invoke};
+}
+
+function applyPerSpellDamageDieSelection(config) {
+  const workflow = config?.workflow;
+  const activity = config?.subject ?? workflow?.activity;
+  const binding = perSpellDamageDieBinding(activity, workflow);
+  if (!binding) return true;
+  if (!workflow) throw new Error("Damage die selection requires a native workflow");
+  const {item, plan, handler, invoke} = binding;
+  const base = Array.from(config.rolls ?? [])[0];
+  if (!base || !Array.isArray(base.parts)) throw new Error("Missing native base damage roll");
+  const cached = PER_SPELL_DAMAGE_CONFIGS.get(config);
+  if (cached) {
+    if (cached.base !== base || ![cached.before, cached.after].includes(base.parts[0])) {
+      throw new Error("Damage configuration changed during repeated preparation");
+    }
+    base.parts[0] = cached.after;
+    return true;
+  }
+  const targets = workflowTargetTokens(workflow);
+  const hp = targets.length === 1 ? targets[0]?.actor?.system?.attributes?.hp : null;
+  const maximum = hp?.effectiveMax ?? hp?.max;
+  const match = /^(\d+)d(\d+)$/i.exec(String(base.parts[0] ?? ""));
+  if (!hp || !Number.isFinite(hp.value) || !Number.isFinite(maximum)
+    || hp.value < 0 || maximum <= 0 || !match || Number(match[1]) < 1) {
+    throw new Error("Damage die selection requires one target with valid HP and a native base die");
+  }
+  const context = Object.freeze({schemaVersion: 1, event: "damage-die-selection",
+    hitPoints: Object.freeze({value: hp.value, max: maximum}),
+    baseDie: Object.freeze({number: Number(match[1]), faces: Number(match[2])})});
+  const result = invoke(context);
+  if (!result || Object.keys(result).some(key => !["schemaVersion", "faces"].includes(key))
+    || result.schemaVersion !== 1 || !Number.isInteger(result.faces)
+    || !handler.configuration?.allowedFaces?.includes(result.faces)) {
+    throw new Error("Damage die selection returned an invalid synchronous result");
+  }
+  const after = `${match[1]}d${result.faces}`;
+  const before = base.parts[0];
+  const receipt = perSpellScriptReceipt({plan, handler, item, workflow,
+    target: targets[0], status: "resolved", committed: false, retry: false,
+    details: {phase: "damage-die-selection", hitPoints: context.hitPoints, before, after}});
+  base.parts[0] = after;
+  PER_SPELL_DAMAGE_CONFIGS.set(config, {base, before, after});
+  appendPerSpellScriptReceipt(workflow, receipt);
+  return true;
 }
 
 async function dispatchPerSpellScript({
@@ -20782,7 +21124,59 @@ function patchMidiInstantTemplateRemoval() {
   return true;
 }
 
+// Keep source documents alive for their own lifecycle. Only the numeric
+// contribution of identical compiler-owned movement artifacts is suppressed.
+function compilerMovementReductionGroup(effect) {
+  const flags = effect?.flags?.[MODULE_ID];
+  const changes = Array.from(effect?.changes ?? []);
+  if (!effect?.parent?.effects || effect.transfer || effect.type !== "base"
+    || flags?.host !== "actor" || flags?.identity?.scope !== "source-target"
+    || flags?.reapply !== "replace" || !flags?.sourceActorUuid
+    || typeof flags.identifier !== "string" || !flags.identifier
+    || !Array.isArray(flags.compilerArtifactIds) || flags.compilerArtifactIds.length !== 1
+    || typeof flags.compilerArtifactIds[0] !== "string" || !flags.compilerArtifactIds[0]
+    || Array.from(effect.statuses ?? []).length || changes.length !== 1) return null;
+  const change = changes[0];
+  if (change.key !== "system.attributes.movement.all" || change.mode !== 0
+    || change.priority !== 20 || !/^-[0-9]+(?:\.[0-9]+)?$/.test(String(change.value))) return null;
+  const strength = -Number(change.value);
+  if (!Number.isFinite(strength) || strength <= 0) return null;
+  return {key: JSON.stringify([flags.identifier, flags.compilerArtifactIds[0]]), strength};
+}
+
+function compilerMovementReductionSuppressed(effect, nativeSuppressed) {
+  if (nativeSuppressed) return true;
+  const group = compilerMovementReductionGroup(effect);
+  const actor = effect?.parent;
+  if (!group || COMPILER_MOVEMENT_SUPPRESSION_ACTORS.has(actor)) return false;
+  COMPILER_MOVEMENT_SUPPRESSION_ACTORS.add(actor);
+  try {
+    const candidates = Array.from(actor.effects ?? []).flatMap(candidate => {
+      const metadata = compilerMovementReductionGroup(candidate);
+      // The guard lets nested getter calls evaluate native/DAE suppression only.
+      if (!metadata || metadata.key !== group.key || candidate.disabled
+        || candidate.isSuppressed) return [];
+      return [{effect: candidate, strength: metadata.strength}];
+    });
+    candidates.sort((a, b) => b.strength - a.strength
+      || (Number(b.effect._stats?.createdTime) || 0) - (Number(a.effect._stats?.createdTime) || 0)
+      || String(a.effect.id).localeCompare(String(b.effect.id)));
+    return candidates.length > 0 && candidates[0].effect !== effect;
+  } finally {
+    COMPILER_MOVEMENT_SUPPRESSION_ACTORS.delete(actor);
+  }
+}
+
+function registerCompilerMovementReductionSuppression() {
+  const hostId = game.modules.get(MODULE_ID)?.active ? MODULE_ID : "arcane-spells-2014";
+  globalThis.libWrapper.register(hostId,
+    "CONFIG.ActiveEffect.documentClass.prototype.isSuppressed",
+    function (wrapped) { return compilerMovementReductionSuppressed(this, wrapped()); },
+    "WRAPPER");
+}
+
 Hooks.once("ready", () => {
+  registerCompilerMovementReductionSuppression();
   patchMidiPersistentTemplateCleanupIsolation();
   patchMidiInstantTemplateRemoval();
   patchMidiCompleteItemUse();
@@ -20792,6 +21186,9 @@ Hooks.once("ready", () => {
       .filter(actor => actor?.uuid)
       .map(actor => [actor.uuid, actor]),
   );
+  // Recompute existing world/synthetic Actors after installing the getter.
+  // reset prepares derived data only; it does not persist disabled states.
+  for (const actor of runtimeActors.values()) actor.reset();
   Promise.all(
     Array.from(runtimeActors.values()).flatMap(actor => [
       cleanupOrphanedOwnedWeaponAttackDamageEffects(actor),
@@ -20973,7 +21370,7 @@ Hooks.once("ready", () => {
       );
     });
   });
-  Hooks.on("dnd5e.preUseActivity", (activity, usageConfig) => {
+  Hooks.on("dnd5e.preUseActivity", (activity, usageConfig, dialogConfig) => {
     try {
       const workflow = usageConfig?.workflow ?? null;
       const item = activity?.item ?? workflow?.item;
@@ -20995,7 +21392,7 @@ Hooks.once("ready", () => {
         ui.notifications?.warn(rejection.message);
         return false;
       }
-      return prepareNativeSummonUse(activity, usageConfig);
+      return prepareNativeSummonUse(activity, usageConfig, dialogConfig);
     } catch (error) {
       usageConfig.arcaneNativeSummonError = String(error?.message ?? error);
       usageConfig.arcaneActionRejection = {
@@ -21025,6 +21422,7 @@ Hooks.once("ready", () => {
   });
   Hooks.on("dnd5e.activityConsumption", (activity, usageConfig, _messageConfig, updates) => {
     try {
+      finalizeNativeSummonSelection(activity, usageConfig);
       return prepareSourceBoundOneShotConsumption(activity, usageConfig, updates);
     } catch (error) {
       const rejection = publishArcaneActionPreflightRejection(
@@ -21334,7 +21732,50 @@ Hooks.on("dnd5e.preUseActivity", (activity, usageConfig) => {
     const workflow = usageConfig?.workflow ?? null;
     const item = activity?.item ?? workflow?.item;
     inheritCompilerFollowUpCastLevel(activity, item, usageConfig);
+    // Installation/version failures are knowable before a workflow commits.
+    // Recheck at damage time too in case configuration changes during use.
+    perSpellDamageDieBinding(activity, workflow);
+    // Recheck the executor at use time: an Actor Item can outlive the module
+    // configuration under which its compendium was generated. Only inspect
+    // Arcane compiler output; unrelated source Items retain their own policy.
+    if (
+      item?.flags?.[MODULE_ID]?.spellAutomation?.source === "compiler"
+      && Array.from(item.effects ?? []).some(effect =>
+        Array.from(effect.changes ?? []).some(change =>
+          typeof change.key === "string" && change.key.startsWith("ATL.")
+        )
+      )
+      && !game.modules.get("ATL")?.active
+    ) {
+      throw compilerSelectionCardinalityFailure(
+        "Enable ATL to use this spell's Token lighting effects",
+        "ACTION_MISCONFIGURED",
+      );
+    }
     preflightCompilerSelectionCardinality(activity, usageConfig, workflow);
+    preflightCompilerSelectedTargetRange(activity, usageConfig, workflow);
+    const ownedWeaponBlock = preflightOwnedWeaponAttack(
+      activity?.actor ?? workflow?.actor ?? item?.actor,
+      item,
+      activity,
+    );
+    if (ownedWeaponBlock) {
+      throw compilerSelectionCardinalityFailure(
+        ownedWeaponBlock.message,
+        ownedWeaponBlock.code,
+      );
+    }
+    const weaponEnchantmentBlock = compilerWeaponEnchantmentPreflight(
+      activity?.actor ?? workflow?.actor ?? item?.actor,
+      item,
+      activity,
+    );
+    if (weaponEnchantmentBlock) {
+      throw compilerSelectionCardinalityFailure(
+        weaponEnchantmentBlock.message,
+        weaponEnchantmentBlock.code,
+      );
+    }
     const availability = activity?.getFlag?.(MODULE_ID, "availability")
       ?? activity?.flags?.[MODULE_ID]?.availability
       ?? null;
@@ -21374,15 +21815,14 @@ Hooks.on("dnd5e.preUseActivity", (activity, usageConfig) => {
   }
 });
 
-Hooks.on("midi-qol.preItemRollV2", ({ workflow } = {}) => {
+Hooks.on("midi-qol.preItemRollV2", async ({ workflow, usage } = {}) => {
+  await prepareNativeSummonResourceCheck(workflow?.activity, usage);
   try {
     const activity = workflow?.activity;
     const item = activity?.item ?? workflow?.item;
     const actor = activity?.actor ?? workflow?.actor ?? item?.actor;
     const block = blockedActionForActor(actor, item, activity)
-      ?? preflightRequiredCompilerSelections(item, activity, workflow)
-      ?? preflightOwnedWeaponAttack(actor, item, activity)
-      ?? compilerWeaponEnchantmentPreflight(actor, item, activity);
+      ?? preflightRequiredCompilerSelections(item, activity, workflow);
     if (!block) {
       // Seed the original Midi workflow on success, but defer every Reassert
       // Control rejection to dnd5e.preUseActivity. Returning false here makes
@@ -21427,6 +21867,17 @@ Hooks.on("midi-qol.preDamageRoll", async (workflow, activity, config) => {
   } catch (error) {
     console.warn(`[${MODULE_ID}] Declared weapon spell rider preparation failed`, error);
     return true;
+  }
+});
+
+Hooks.on("dnd5e.preRollDamage", config => {
+  try {
+    return applyPerSpellDamageDieSelection(config);
+  } catch (error) {
+    recordCompilerRuntimeError(config?.workflow, error, "damage-die-selection");
+    ui.notifications?.warn(String(error?.message ?? error));
+    console.warn(`[${MODULE_ID}] Damage die selection rejected`, error);
+    return false;
   }
 });
 

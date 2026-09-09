@@ -46,13 +46,22 @@ try {
   execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
 import {spellAutomationSpecs, perSpellScriptRegistry, readPerSpellScriptSource} from '@arcanedesk/spells-2014';
 import {compileSpellPlan} from '@arcanedesk/spell-compiler';
-assert.equal(Object.keys(spellAutomationSpecs).length,167);
+assert.equal(Object.keys(spellAutomationSpecs).length,187);
+assert.deepEqual(Object.values(spellAutomationSpecs)
+  .filter(definition => compileSpellPlan(definition).contract.level === 0)
+  .map(definition => definition.id).sort(), [
+  'acid-splash', 'blade-ward', 'booming-bladetce', 'chill-touch',
+  'dancing-lights', 'eldritch-blast', 'fire-bolt', 'guidance', 'light',
+  'poison-spray', 'produce-flame', 'ray-of-frost', 'resistance',
+  'sacred-flame', 'shillelagh', 'shocking-grasp', 'thorn-whip',
+  'toll-the-dead', 'true-strike', 'vicious-mockery',
+].sort());
 for(const definition of Object.values(spellAutomationSpecs))assert.equal(compileSpellPlan(definition).definitionId,definition.id);
-for(const id of ['harm','banishing-smite']){assert.equal(perSpellScriptRegistry[id].version,1);assert(readPerSpellScriptSource(id).includes('register'));}`],{cwd:temp,stdio:'pipe'});
+for(const id of ['harm','banishing-smite','toll-the-dead']){assert.equal(perSpellScriptRegistry[id].version,1);assert(readPerSpellScriptSource(id).includes('register'));}`],{cwd:temp,stdio:'pipe'});
   execFileSync(process.execPath,['--input-type=module','-e','import {compileSpellAutomation} from "@arcanedesk/auto2014-compiler"; import {cleanRoomSpell} from "@arcanedesk/auto2014-compiler/dsl"; import {readRuntimeSource} from "@arcanedesk/auto2014-runtime"; if(typeof compileSpellAutomation!=="function" || typeof cleanRoomSpell!=="function" || !(await readRuntimeSource()).includes("dnd5e.preUseActivity")) throw Error("Missing exports");'],{cwd:temp,stdio:'pipe'});
   execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
 import {spellAutomationCompiledIds,composeRegisteredSpell,summonProfileIdentities} from '@arcanedesk/auto2014-catalogue';
-assert.equal(spellAutomationCompiledIds.length,186);assert.equal(summonProfileIdentities.length,22);
+assert.equal(spellAutomationCompiledIds.length,187);assert.equal(summonProfileIdentities.length,22);
 for(const id of spellAutomationCompiledIds){const input={_id:'catalogueTest001',name:'Original test',type:'spell',img:'icons/svg/book.svg',system:{identifier:id,description:{value:'Original caller text',chat:''},source:{rules:'2014'}}};const {item}=composeRegisteredSpell(input);assert.equal(item._id,input._id);assert.equal(item.system.description.value,input.system.description.value);}`],{cwd:temp,stdio:'pipe'});
   execFileSync(process.execPath,['--input-type=module','-e',`import assert from 'node:assert/strict';
 import {writeModule} from '@arcanedesk/foundry-pack-builder';

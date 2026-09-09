@@ -1,6 +1,10 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createRuntimeAvailability} from '../src/availability.mjs';
+import {compileSpellPlan} from '@arcanedesk/spell-compiler';
+import {spellAutomationSpecs} from '@arcanedesk/spells-2014';
+import {describeSpellRequirements} from '@arcanedesk/automation-contracts/requirements';
+import dancingLights from '../../spells-2014/src/spells/dancing-lights/definition.mjs';
 
 function fixture() {
   const game = {system: {id: 'dnd5e', version: '5.3.3'}, release: {generation: 13},
@@ -10,6 +14,33 @@ function fixture() {
   return {game, runtime, midi: () => ({completeItemUse() {}})};
 }
 const requirements = {providers: ['arcane-runtime', 'native-active-effect'], adapters: [], scripts: [], resources: []};
+
+test('native carriers require both terminal APIs as well as verified resources', async () => {
+  const f = fixture();
+  f.runtime.adapters.push('native-summon');
+  const check = createRuntimeAvailability({...f, verifyResources: async () => ({valid:true})});
+  const required = describeSpellRequirements(compileSpellPlan(dancingLights));
+  assert.match((await check(required)).reason, /terminal APIs/);
+  f.runtime.api.finalizeNativeSummonUse = () => {};
+  assert.equal((await check(required)).available, false);
+  f.runtime.api.cancelNativeSummonUse = () => {};
+  assert.equal((await check(required)).available, true);
+  delete f.runtime.api.finalizeNativeSummonUse;
+  assert.equal((await check(required)).available, false);
+});
+
+test('real Light lowering requires ATL while non-light cantrips remain available', async () => {
+  const f = fixture(); const check = createRuntimeAvailability(f);
+  const light = describeSpellRequirements(compileSpellPlan(spellAutomationSpecs.light));
+  assert(light.providers.includes('active-token-effects'));
+  assert.match((await check(light)).reason, /Enable ATL/);
+  const bolt = describeSpellRequirements(compileSpellPlan(spellAutomationSpecs['fire-bolt']));
+  assert.equal((await check(bolt)).available, true);
+  f.game.modules.set('ATL', {active: false});
+  assert.equal((await check(light)).available, false);
+  f.game.modules.get('ATL').active = true;
+  assert.equal((await check(light)).available, true);
+});
 
 test('artifact adapters are checked against their registry and installed runtime', async () => {
   const f = fixture(); const check = createRuntimeAvailability(f);

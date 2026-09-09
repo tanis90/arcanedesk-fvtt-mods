@@ -1,10 +1,45 @@
-# Arcane Spells 2014 — 0.1.0
+# Arcane Spells 2014 — 0.2.0
+
+Version 0.2.0 includes 20 cantrips in addition to the
+released 167 level 1–6 spells (187 definitions total). The cantrips have completed
+their declared QA-A runtime scope; see the [versioned acceptance summary](../../packages/spells-2014/README.md#cantrip-runtime-acceptance)
+for evidence boundaries. The 0.1.0 evidence below applies only to that release.
+Download the versioned ZIP from the [0.2.0 release](https://github.com/tanis90/arcanedesk-fvtt-mods/releases/tag/arcane-spells-2014-v0.2.0),
+or use the installation manifest below. Existing Actor Items require a separate
+replacement or migration; updating the module does not rewrite them.
 
 This suite adds automation to spell content already available in your Foundry
-world. It contains 167 existing level 1–6 definitions, a compiler, spell runtime,
-and the Harm and Banishing Smite scripts. It preserves each definition's stated
+world. It contains 187 level 0–6 definitions, a compiler, spell runtime,
+and the Harm, Banishing Smite and Toll the Dead scripts. It preserves each definition's stated
 support and omissions. It does not promise every official spell or full automation
 for every included spell.
+
+The twentieth cantrip is Dancing Lights, with one native placement action and an
+optional 1–4 light count (default four). Its minimal original Actor carrier is
+included in `packs/summons`; it does not require a purchased creature source.
+Its declared simplified behavior has passed QA-A acceptance.
+
+For Dancing Lights, the GM performs native canvas placement. A normal sheet click
+uses four lights with the automated configuration. To choose another count, hold
+your Midi-QOL **Roll Toggle** key while clicking the same spell activity, choose
+the Summons Profile in the native dialog, then click Cast Spell and place the lights.
+QA-A uses `F` for Roll Toggle; check your world's keybindings rather than assuming
+the same key. Context callers use the returned `light-count` selection contract.
+The selected count changes this cast only. End concentration to remove its lights.
+
+A light is automatically assigned to the caster's sole online non-GM owner. If
+there are multiple owners, it initially remains under GM control. To assign a
+specific light, the GM opens that light's Token actor sheet, opens the header
+menu, and chooses **Configure light control**. Set the intended player's level
+to **Owner** in Foundry's native ownership form and save. This changes only that
+light, not the shared carrier Actor or other lights. Repeat for each light that
+needs a different controller; the chosen player can then drag it on the canvas.
+
+To represent merged lights, move the same cast's existing Tokens to one position
+(their native Token configuration can set equal x/y), and change one display name
+or image. Split them by dragging those same Tokens apart and restoring that display
+setting. Do not copy Tokens or recast to split them. The GM still judges movement,
+action cost, layout and out-of-range removal. End concentration to clean up the cast.
 
 Version 0.1.0 passed offline checks and an isolated Foundry world test: 123 spells
 generated from SRD 5.1, with source text preserved and stable IDs on regeneration.
@@ -20,7 +55,7 @@ npm ci
 npm run verify
 ```
 
-The spell candidate is `dist/arcane-spells-2014-0.1.0.zip`. Its SHA256 and size are
+The spell package is `dist/arcane-spells-2014-0.2.0.zip`. Its SHA256 and size are
 in `dist/artifacts.json`. The ZIP contains `module.json` at its root, a browser
 script, `coverage.json`, and licenses. It contains no source spell descriptions
 or populated spell compendium. `coverage.json` lists the actual spell IDs,
@@ -37,8 +72,8 @@ node examples/spell-suite/compile.mjs --all dist/example-all.json
 
 Use a new output filename on subsequent runs; existing files are protected.
 Each result includes its mechanical plan, requirements, and binding result.
-The all-spell example compiles 167 definitions. It binds 159 using original
-demonstration prose and reports eight as `unbound` because it supplies no summon
+The development all-spell example compiles 187 definitions. It binds 178 using original
+demonstration prose and reports nine as `unbound` because it supplies no summon
 Actors. Those are successful compilations with unresolved resources, not runnable
 summon spells. The example output is a developer inspection artifact, not a
 compendium to install. Its repeated target ID is isolated per example result.
@@ -50,6 +85,16 @@ and DAE. Spells that require Active Auras or Aura Effects also require those
 separate modules; the generator reports missing providers. Aura Effects is the
 Foundry module `auraeffects`, and the aura runtime loads its installed helper file
 on demand. This is not a bundled dependency.
+
+The cantrip package supports **Active Token Effects** (module ID
+`ATL`) as an on-demand dependency for Light. Install it from Foundry Setup's
+Add-on Modules catalogue, then enable it in Manage Modules for your world.
+ATL v1.1.1 passed standalone Light QA, including dependency disable/restore,
+actual lighting, movement, walls and restoration of the original light.
+Preview skips dependent spells when ATL is absent or disabled; other spells
+remain available. Existing generated lighting Items also refuse to cast if ATL
+is later disabled. Dancing Lights uses its included original carrier and native
+Token lighting; it does not require ATL.
 
 The tested stack is Foundry 13.351, dnd5e 5.3.3, Midi-QOL 13.0.63, DAE 13.0.28,
 Times Up 13.1.9, socketlib 1.1.3, libWrapper 1.13.5.1, Active Auras 0.12.7 and
@@ -136,7 +181,7 @@ does not include a general summon-content importer or provider-selection UI.
 
 When the existing complete Auto 2014 module is active, it owns runtime hooks.
 The spell module does not initialize another core. The old core has no read-only
-script-contract query, so the current candidate rejects the two script-dependent
+script-contract query, so the spell module rejects unsupported script-dependent
 spells in that mode. The verified use path is standalone mode.
 This is an explicit compatibility restriction, not a claim of full legacy coexistence.
 
@@ -147,11 +192,11 @@ This is an explicit compatibility restriction, not a claim of full legacy coexis
 | `automation-contracts` | Runtime profiles, adapter contracts, requirements, hashes and resource binding checks |
 | `spell-compiler` | DSL validation, mechanical plans and Foundry Item emission |
 | `spell-runtime` | Reviewed spell projection of the shared runtime, bootstrap and installation checks |
-| `spells-2014` | 167 definitions, two scripts, content matching/binding and compendium generation |
+| `spells-2014` | 187 definitions, three scripts, content matching/binding and compendium generation |
 
-Author in `packages/spells-2014/src/spells/<id>/definition.mjs`; the two scripts
+Author in `packages/spells-2014/src/spells/<id>/definition.mjs`; registered scripts
 live alongside their definitions. The legacy catalogue re-exports these sources
-and retains 19 cantrips. Do not maintain a separate private spell implementation.
+and retains 20 cantrips. Do not maintain a separate private spell implementation.
 `compileSpellPlan` is a Node build API. Browser code consumes serialized plans via
 `@arcanedesk/spells-2014/binding`; it does not load executable DSL or the Node compiler.
 

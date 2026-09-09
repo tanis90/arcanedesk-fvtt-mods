@@ -2,16 +2,18 @@
   "id": "arcane-spells-2014",
   "title": "Arcane Spells — 2014",
   "description": "Apply Arcane automation to existing 2014 spell content and generate a local spell compendium.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "compatibility": {"minimum": "13.347", "verified": "13.351", "maximum": "13"},
   "authors": [{"name": "Arcane Desk"}],
   "relationships": {
     "systems": [{"id": "dnd5e", "type": "system", "compatibility": {"minimum": "5.3.3", "verified": "5.3.3"}}],
-    "requires": [{"id": "midi-qol", "type": "module"}, {"id": "dae", "type": "module"}]
+    "requires": [{"id": "midi-qol", "type": "module"}, {"id": "dae", "type": "module"}],
+    "recommends": [{"id": "ATL", "type": "module"}]
   },
   "esmodules": ["scripts/arcane-spells.js"],
+  "packs": [{"name": "summons", "label": "Arcane Spell Carriers", "path": "packs/summons", "type": "Actor", "system": "dnd5e", "ownership": {"PLAYER": "OBSERVER", "ASSISTANT": "OWNER"}}],
   "license": "LICENSE",
   "url": "https://github.com/tanis90/arcanedesk-fvtt-mods",
   "manifest": "https://raw.githubusercontent.com/tanis90/arcanedesk-fvtt-mods/main/modules/arcane-spells-2014/module.json",
-  "download": "https://github.com/tanis90/arcanedesk-fvtt-mods/releases/download/arcane-spells-2014-v0.1.0/arcane-spells-2014-0.1.0.zip"
+  "download": "https://github.com/tanis90/arcanedesk-fvtt-mods/releases/download/arcane-spells-2014-v0.2.0/arcane-spells-2014-0.2.0.zip"
 }

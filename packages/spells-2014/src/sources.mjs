@@ -10,7 +10,7 @@ export function previewSpellSources({documents, catalogue, sourceRuleset, identi
   const definitions = new Map();
   for (const entry of catalogue) {
     if (!entry?.id || definitions.has(entry.id) || !Number.isInteger(entry.level)
-      || entry.level < 1 || entry.level > 6) {
+      || entry.level < 0 || entry.level > 6) {
       throw new Error("Invalid or duplicate spell catalogue entry");
     }
     definitions.set(entry.id, entry);

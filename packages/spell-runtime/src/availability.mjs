@@ -14,7 +14,7 @@ export function createRuntimeAvailability({game, runtime, midi = () => globalThi
     if (typeof midi()?.completeItemUse !== 'function') reasons.push('Midi workflow API is unavailable');
     if (typeof runtime.api?.applyCompilerRuntimePostUse !== 'function'
       || typeof runtime.api?.dispatchPerSpellScript !== 'function') reasons.push('Arcane runtime has not finished initialization');
-    const modules = {'active-auras': 'ActiveAuras', 'aura-effects': 'auraeffects'};
+    const modules = {'active-auras': 'ActiveAuras', 'aura-effects': 'auraeffects', 'active-token-effects': 'ATL'};
     const builtins = new Set(['arcane-runtime', 'dnd5e-midi-native', 'midi-overtime', 'native-active-effect']);
     for (const provider of requirements.providers) {
       if (modules[provider]) {
@@ -26,6 +26,10 @@ export function createRuntimeAvailability({game, runtime, midi = () => globalThi
       const registry = entry.site === 'artifacts' ? ARCANE_RUNTIME_ARTIFACT_ADAPTERS : ARCANE_RUNTIME_RULE_ADAPTERS;
       if (name && !Object.hasOwn(registry, name)) reasons.push(`Unsupported adapter: ${name}`);
       if (name && runtime.mode === 'standalone' && !runtime.adapters?.includes(name)) reasons.push(`Runtime adapter is missing: ${name}`);
+      if (name === 'native-summon' && ['finalizeNativeSummonUse', 'cancelNativeSummonUse']
+        .some(method => typeof runtime.api?.[method] !== 'function')) {
+        reasons.push('Native summon terminal APIs are unavailable');
+      }
     }
     for (const required of requirements.scripts) {
       const installed = runtime.getScriptContract?.(required.id) ?? runtime.api?.getScriptContract?.(required.id);

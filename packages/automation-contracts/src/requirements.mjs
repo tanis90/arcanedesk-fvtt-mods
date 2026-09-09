@@ -20,7 +20,13 @@ export function describeSpellRequirements(plan) {
     }
   }
   const resources = [];
+  const providers = new Set(projection.capabilities);
   for (const artifact of projection.artifacts) {
+    // Effect lowering owns Token attribute writes. Their external executor is
+    // required even though the enclosing artifact is a native ActiveEffect.
+    if (artifact.state?.changes?.some(change => typeof change.key === 'string' && change.key.startsWith('ATL.'))) {
+      providers.add('active-token-effects');
+    }
     if (artifact.kind !== 'entity') continue;
     if (!Array.isArray(artifact.state?.profiles) || !artifact.state.profiles.length) {
       throw new Error('Entity resource profiles are missing');
@@ -38,7 +44,7 @@ export function describeSpellRequirements(plan) {
   const script = projection.perSpellScript;
   return {
     schemaVersion: 1, spellId: plan.definitionId,
-    providers: [...new Set(projection.capabilities)].sort(),
+    providers: [...providers].sort(),
     adapters,
     scripts: script ? [{id: script.id, version: script.version, schemaVersion: script.schemaVersion,
       handlers: structuredClone(script.handlers)}] : [],

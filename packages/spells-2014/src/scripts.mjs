@@ -2,6 +2,12 @@ import { readFileSync, readdirSync } from "node:fs";
 
 const entries = [
   {
+    id: "toll-the-dead",
+    version: 1,
+    sourceFile: "toll-the-dead.js",
+    modulePath: "scripts/spells/toll-the-dead.js",
+  },
+  {
     id: "banishing-smite",
     version: 1,
     sourceFile: "banishing-smite.js",

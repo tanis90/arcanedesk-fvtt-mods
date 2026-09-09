@@ -1,5 +1,8 @@
 # Contributor rules
 
+Before adding, migrating, reviewing, fixing or testing spells or their shared compiler/runtime,
+read [法术开发必读](packages/spells-2014/DEVELOPMENT.md). This is the canonical spell-development SOP.
+
 This is independently buildable public source. Do not introduce private paths, credentials, restricted rulebook
 text, unauthorized translations or bundled third-party art. New assets require an explicit license/source record.
 

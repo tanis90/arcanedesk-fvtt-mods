@@ -1,5 +1,30 @@
 # Arcane Spells 2014 releases
 
+## 0.2.0 — 2026-09-09
+
+Adds 20 cantrips (19 migrated and Dancing Lights), for 187 level 0–6 definitions.
+The cantrip scope contains six full and fourteen simplified implementations;
+each definition keeps its explicit omissions and DM actions.
+
+- Dancing Lights creates 1–4 controllable light carriers with native placement,
+  ownership, concentration and cleanup. Movement, layout and merging remain manual.
+- Toll the Dead selects d8/d12 from ordinary current versus maximum HP before
+  the native damage roll, preserving native cantrip scaling.
+- Light requires ATL and checks readiness both during generation and when an
+  existing Item is used; tested lighting restores the original baseline.
+- Cantrip fixes cover independent Eldritch Blast beams, non-stacking Ray of Frost
+  movement effects, real weapon enchantment/workflows and typed Booming Blade damage.
+- QA-A covered the declared cantrip scope, including UI/Context, growth,
+  failures, resources and applicable lifecycle/source-isolation cases. See the
+  [versioned evidence boundaries](../../packages/spells-2014/README.md#cantrip-runtime-acceptance).
+
+SRD generation produced 139 spells including 16 of these cantrips, with original
+descriptions and stable IDs preserved. The other four used original mechanical
+fixtures; live DDB importing is not certified. Existing Actor Items do not update
+automatically. Context acceptance used SDK commit edb0bfe; this module release
+does not publish that SDK or a Desktop update. Earlier level 1–6 limitations below
+remain applicable; this is not new all-spell combat certification.
+
 ## 0.1.0 — 2026-09-08
 
 First public release of the independent spell suite: compiler, runtime, 167 existing
