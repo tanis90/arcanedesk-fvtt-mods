@@ -4,3 +4,7 @@ Copyright 2026 ArcaneDesk contributors
 The initial compatibility adapters were developed in the private Arcane-Desk project.
 Foundry VTT, Dice So Nice, Monk's Common Display and D&D are owned by their respective owners.
 Third-party software is not bundled. This project does not claim endorsement by those owners.
+
+The arcane-assets module redistributes third-party artwork under each source's own
+license (public domain, CC0, CC-BY 3.0, and a custom credit-required license); see
+modules/arcane-assets/ATTRIBUTIONS.md for the per-source terms and credits.

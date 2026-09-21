@@ -1,0 +1,604 @@
+{
+"entries": {
+"Elf knight with kite shield": {
+"name": "持盾精灵骑士"
+},
+"Horned-helm barbarian warrior": {
+"name": "角盔蛮族战士"
+},
+"Star-robed wizard with orb staff": {
+"name": "持法球法杖的星袍法师"
+},
+"Skeleton spear guard": {
+"name": "骷髅长枪卫兵"
+},
+"Skeleton swordsman mid-swing": {
+"name": "挥剑的骷髅剑士"
+},
+"Skeleton archer with bow": {
+"name": "持弓的骷髅弓箭手"
+},
+"Elf rogue with raised dagger": {
+"name": "举匕首的精灵盗贼"
+},
+"Lightning toad monster": {
+"name": "闪电蟾蜍怪"
+},
+"Elf monarch with leaf crown": {
+"name": "戴叶冠的精灵君主"
+},
+"Cheering dwarf artisan": {
+"name": "欢呼的矮人工匠"
+},
+"Thief carrying a loot sack": {
+"name": "背赃物袋的盗贼"
+},
+"Scowling ogre brute": {
+"name": "怒目而立的食人魔打手"
+},
+"Preaching cleric": {
+"name": "布道的牧师"
+},
+"Cheering elf crusader knight": {
+"name": "欢呼的精灵十字军骑士"
+},
+"Seated tinker artisan": {
+"name": "坐凳上忙活的修理工匠"
+},
+"Dancing jester with bells": {
+"name": "摇铃起舞的弄臣"
+},
+"Town guard with spear": {
+"name": "持矛城镇卫兵"
+},
+"Werewolf brute": {
+"name": "狼人恶汉"
+},
+"Dwarf peddler with pots": {
+"name": "带锅罐的矮人行商"
+},
+"Young crossbow hunter": {
+"name": "年幼的弩手"
+},
+"Hooded swordsman at vigil": {
+"name": "扶剑守夜的兜帽剑士"
+},
+"Wild boar": {
+"name": "野猪"
+},
+"Goblin warrior": {
+"name": "地精战士"
+},
+"Guard with halberd": {
+"name": "持戟卫兵"
+},
+"winged bearded man": {
+"name": "有翼胡须男子"
+},
+"one-eyed lobed aberration": {
+"name": "独眼团块异怪"
+},
+"bird folk artisan in overalls": {
+"name": "穿工装围裙的鸟人匠人"
+},
+"goblin swordsman": {
+"name": "持剑地精"
+},
+"bird folk wizard with staff": {
+"name": "持杖鸟人法师"
+},
+"coin-tossing goblin": {
+"name": "抛硬币的地精"
+},
+"messenger bird with scroll": {
+"name": "背卷轴的信使鸟"
+},
+"stooping bird with quill feather": {
+"name": "俯身带羽笔的鸟"
+},
+"pumpkin-headed mummy": {
+"name": "南瓜头木乃伊"
+},
+"guard girl with halberd and torch": {
+"name": "持戟举火把的少女守卫"
+},
+"knight with sword and shield": {
+"name": "持剑与盾的骑士"
+},
+"multi-eyed fanged aberration": {
+"name": "多眼獠牙异怪"
+},
+"wheel-faced cloaked creature": {
+"name": "轮面披风怪物"
+},
+"hooded monk with banner staff": {
+"name": "持幡杖的兜帽修士"
+},
+"grinning brute with twin daggers": {
+"name": "双持匕首的狞笑壮汉"
+},
+"startled hooded wizard": {
+"name": "受惊的兜帽法师"
+},
+"Bat-winged monster imp": {
+"name": "蝠翼小怪物"
+},
+"Elderly wizard with pointed hat": {
+"name": "尖帽老法师"
+},
+"Elf necromancer holding a skull": {
+"name": "持骷髅的精灵死灵法师"
+},
+"Skeleton raising its fists": {
+"name": "举拳的骷髅"
+},
+"Goblin with an arrow in its head": {
+"name": "头上中箭的地精"
+},
+"Bald barbarian brawler": {
+"name": "光头蛮族拳手"
+},
+"Samurai warrior with katana": {
+"name": "持刀武士"
+},
+"Mushroom guard with spear": {
+"name": "持矛蘑菇守卫"
+},
+"frogfolk merchant with pet cat": {
+"name": "蛙人商人与宠物猫"
+},
+"curled breathing dragon": {
+"name": "蜷缩喷息的龙"
+},
+"elderly wizard reading a book": {
+"name": "捧书阅读的老法师"
+},
+"dwarf warrior with warhammer": {
+"name": "挥战锤的矮人战士"
+},
+"warrior with sword and shield": {
+"name": "持剑与圆盾的战士"
+},
+"angry bald swordsman": {
+"name": "愤怒的光头剑士"
+},
+"fantasy NPC doodle sheet": {
+"name": "奇幻NPC涂鸦合集图"
+},
+"fantasy NPC doodle sheet (transparent)": {
+"name": "奇幻NPC涂鸦合集图（透明底）"
+},
+"Smiling elderly villager with basket": {
+"name": "提篮的微笑老村民"
+},
+"Villager woman with barrel": {
+"name": "扶桶的村妇"
+},
+"Villager with proclamation tray": {
+"name": "举告示托盘的村民"
+},
+"Hooded rogue with slingshot": {
+"name": "持弹弓的兜帽流氓"
+},
+"Farmer holding a potato": {
+"name": "拿土豆的农妇"
+},
+"Baker with bread basket": {
+"name": "带面包篮的面包师"
+},
+"Farmer with sunflower": {
+"name": "拿向日葵的农妇"
+},
+"Farmer carrying a harvest sack": {
+"name": "背收获袋的农夫"
+},
+"Farmer with donkey": {
+"name": "和驴子在一起的农夫"
+},
+"Wizard with glowing orb": {
+"name": "持发光法球的巫师"
+},
+"mushroom forager": {
+"name": "采蘑菇的村民"
+},
+"clown with bread basket": {
+"name": "提面包篮的小丑"
+},
+"elder villager with staff": {
+"name": "拄杖的年长村民"
+},
+"peddler with sack": {
+"name": "背包袱的行商"
+},
+"bearded villager": {
+"name": "留胡子的村民"
+},
+"grumpy villager at post": {
+"name": "倚木桩的不悦村民"
+},
+"milkmaid with cow": {
+"name": "挤牛奶的农妇"
+},
+"sheep rider": {
+"name": "骑绵羊的村民"
+},
+"Villager with harvest basket": {
+"name": "背菜篮的村民"
+},
+"Farmer with sickle and straw hat": {
+"name": "戴草帽持镰刀的农妇"
+},
+"Shepherdess with crook and sheep": {
+"name": "持牧杖的老牧妇与绵羊"
+},
+"Child riding a pig": {
+"name": "骑猪的孩童"
+},
+"Goose herder holding a goose": {
+"name": "抱鹅的牧鹅人"
+},
+"Farmer with straw hat and staff": {
+"name": "戴草帽拄长杖的农夫"
+},
+"Hooded chicken thief": {
+"name": "抱鸡的兜帽窃贼"
+},
+"Artisan carrying lumber planks": {
+"name": "搬木板的工匠"
+},
+"Elder villager with rose and cane": {
+"name": "戴玫瑰持杖的老村民"
+},
+"Farmer with pitchfork": {
+"name": "持干草叉的农夫"
+},
+"Villager carrying sack overhead": {
+"name": "头顶麻袋的村民"
+},
+"Villager behind wooden fence": {
+"name": "木栏后的村民"
+},
+"Villager playing with dog": {
+"name": "与狗玩耍的村民"
+},
+"Villager girl with shield": {
+"name": "持盾的村姑"
+},
+"Startled carpenter with saw": {
+"name": "受惊的木匠"
+},
+"Butcher with list and bone": {
+"name": "持清单与骨头的屠夫"
+},
+"Villager reading a notice": {
+"name": "读告示的村民"
+},
+"waving villager woman": {
+"name": "挥手的村妇"
+},
+"Baker slicing bread": {
+"name": "切面包的面包师"
+},
+"Sausage seller": {
+"name": "卖香肠的商贩"
+},
+"Bun seller with bowl": {
+"name": "端面包盆的商贩"
+},
+"old merchant with sack": {
+"name": "提袋子的老商人"
+},
+"Cookie seller with tray": {
+"name": "端曲奇托盘的商贩"
+},
+"Cook in kitchen steam": {
+"name": "蒸汽中的厨师"
+},
+"Despairing farmer with grain sack": {
+"name": "绝望的农夫与粮袋"
+},
+"Baker carrying bread bundle on head": {
+"name": "头顶面包包裹的面包师"
+},
+"Baker woman balancing bread loaves": {
+"name": "头顶面包的面包师女子"
+},
+"Baker with crossed arms and loaf": {
+"name": "抱臂面包师"
+},
+"Baker woman hugging a loaf": {
+"name": "紧抱面包的面包师女子"
+},
+"cook with spoon and baguette": {
+"name": "持勺与长棍面包的厨师"
+},
+"baker holding baguettes": {
+"name": "抱长棍面包的面包师"
+},
+"Villager carrying a giant cabbage": {
+"name": "头顶大白菜的村民"
+},
+"Villager with feathered hat and bindle stick": {
+"name": "戴羽帽扛行囊棍的村民"
+},
+"Old villager with gnarled staff": {
+"name": "拄木杖的老村民"
+},
+"Villager with lantern": {
+"name": "提灯村民"
+},
+"Villager holding a sunflower": {
+"name": "手捧向日葵的村民"
+},
+"Hooded cloaked villager": {
+"name": "兜帽披风村民"
+},
+"Market villager with baskets": {
+"name": "挑篮赶集的村民"
+},
+"Stout villager in turban": {
+"name": "戴头巾的壮硕村民"
+},
+"Villager holding up a trinket": {
+"name": "举着小物件的村民"
+},
+"old villager with pouch": {
+"name": "带钱袋的老村民"
+},
+"praying veiled woman": {
+"name": "祈祷的蒙巾女子"
+},
+"wizard in pointed hat": {
+"name": "戴尖帽的巫师"
+},
+"villager woman pointing by stone wall": {
+"name": "石墙边指点的村妇"
+},
+"stonemason with mallet": {
+"name": "持木槌的石匠"
+},
+"villager behind boulders": {
+"name": "巨石后的村民"
+},
+"tavern keeper with beer and roast chicken": {
+"name": "端啤酒和烤鸡的酒馆老板娘"
+},
+"baker with bread basket": {
+"name": "抱面包篮的面包师"
+},
+"hooded villager with beer stein": {
+"name": "持啤酒杯的兜帽村民"
+},
+"barmaid with tray of beer mugs": {
+"name": "端啤酒杯托盘的女侍"
+},
+"baker carrying basket of bread": {
+"name": "抱面包篮的面包师"
+},
+"waitress with wine bottle and glass": {
+"name": "端葡萄酒托盘的女侍者"
+},
+"pastry peddler with pies and price tags": {
+"name": "卖馅饼点心的女行商"
+},
+"traveling merchant with pack and coin purse": {
+"name": "背货包攥钱袋的行商"
+},
+"townsman in feathered hat": {
+"name": "戴羽毛帽的镇民"
+},
+"elderly villager pointing at sign": {
+"name": "指告示牌的年长村民"
+},
+"Villager woman holding a notice": {
+"name": "举着告示的村妇"
+},
+"Old man reading a scroll": {
+"name": "阅读卷轴的老人"
+},
+"Village girl behind a wooden stall": {
+"name": "木摊后的乡村女孩"
+},
+"Bald villager in patched trousers": {
+"name": "穿补丁裤的光头村民"
+},
+"Mustached craftsman by a wooden board": {
+"name": "木板旁的髭须工匠"
+},
+"Grinning villager with a dangling pouch": {
+"name": "拎着小袋咧嘴笑的村民"
+},
+"Townswoman with quill and ledger": {
+"name": "持羽毛笔和账板的女市民"
+},
+"Farmer holding a basket of herbs": {
+"name": "捧香草篮的农夫"
+},
+"old farmer with produce crate": {
+"name": "老农与作物木箱"
+},
+"villager with woven bag": {
+"name": "挎编织袋的村民"
+},
+"craftsman with mallet": {
+"name": "持木槌的匠人"
+},
+"blacksmith with horseshoes": {
+"name": "举马蹄铁的铁匠"
+},
+"smith girl swinging mallet": {
+"name": "挥槌的女匠人"
+},
+"laborer with shoulder sack": {
+"name": "扛麻袋的劳工"
+},
+"surprised villager behind cow": {
+"name": "奶牛后的惊讶村民"
+},
+"artist with raised brush": {
+"name": "举刷子的画匠"
+},
+"Barrel-carrying cooper villager": {
+"name": "搬木桶的制桶匠村民"
+},
+"Cheering hooded villager": {
+"name": "欢呼的兜帽村民"
+},
+"Villager packing a crate with mallet": {
+"name": "持木槌钉木箱的村民"
+},
+"Bearded elder villager with flower": {
+"name": "持花的胡须老者村民"
+},
+"Village woman holding a lit candle": {
+"name": "持烛的村妇"
+},
+"Candle seller beside a barrel": {
+"name": "木桶旁卖蜡烛的村民"
+},
+"Candle seller with tray basket": {
+"name": "端蜡烛篮筐的村民"
+},
+"Singing villager with two lit candles": {
+"name": "持双烛歌唱的村民"
+},
+"Elder villager carrying a pie": {
+"name": "端派的老村民"
+},
+"Villager doodle set 1": {
+"name": "村民涂鸦合集一"
+},
+"Villager tradesfolk doodle set 2": {
+"name": "村民百工涂鸦合集二"
+},
+"Hooded zealot raising arms": {
+"name": "举臂的兜帽狂信者"
+},
+"Weeping flagellant zealot": {
+"name": "哭泣的苦修狂信者"
+},
+"Weeping zealot in prayer": {
+"name": "祈祷哭泣的狂信者"
+},
+"weeping zealot": {
+"name": "哭泣的狂信者"
+},
+"zealot with holy symbol": {
+"name": "佩圣徽的狂信者"
+},
+"zealot ritual trio": {
+"name": "狂信者仪式三人组"
+},
+"zealot with gem staff": {
+"name": "持宝石法杖的狂信者"
+},
+"kneeling zealot with raised arms": {
+"name": "举臂跪拜的狂信者"
+},
+"zealot with raised fist": {
+"name": "举拳的狂信者"
+},
+"zealot with forked staff": {
+"name": "持叉杖的狂信者"
+},
+"zealot with shield and whip": {
+"name": "持盾与鞭的狂信者"
+},
+"preaching hooded zealot": {
+"name": "布道的兜帽狂信者"
+},
+"hooded zealot with staff": {
+"name": "持杖兜帽狂信者"
+},
+"hooded zealot with skull mask": {
+"name": "持骷髅面具的兜帽狂信者"
+},
+"praying hooded zealot": {
+"name": "合十祈祷的兜帽狂信者"
+},
+"hooded zealot with cauldron": {
+"name": "守釜的兜帽狂信者"
+},
+"hooded zealot with interlocked fingers": {
+"name": "十指交扣的兜帽狂信者"
+},
+"hooded zealot with crystal staff": {
+"name": "持水晶法杖的兜帽狂信者"
+},
+"chanting zealot with raised brand": {
+"name": "高举火把吟诵的狂信者"
+},
+"Zealot holding a skull": {
+"name": "捧骷髅的狂信者"
+},
+"Zealot with shield": {
+"name": "持盾的狂信者"
+},
+"Zealot flanked by skeletons": {
+"name": "骷髅簇拥的狂信者"
+},
+"Zealot summoning tentacles": {
+"name": "召唤触手的狂信者"
+},
+"Elder zealot with staff": {
+"name": "持杖的年长狂信者"
+},
+"Ecstatic zealot": {
+"name": "狂喜的狂信者"
+},
+"Zealot with sword and skull": {
+"name": "持剑与骷髅的狂信者"
+},
+"Cultists stabbing a victim": {
+"name": "刺杀同伴的狂信者"
+},
+"weeping bald zealot with lantern": {
+"name": "提灯哭泣的光头狂信者"
+},
+"hooded zealot kneeling before horned zealot": {
+"name": "跪拜有角狂信者的兜帽狂信者"
+},
+"zealots brewing at the cauldron": {
+"name": "大锅熬煮的狂信者们"
+},
+"hooded zealot with twin flames": {
+"name": "手托双焰的兜帽狂信者"
+},
+"hooded zealot with lantern and flaming staff": {
+"name": "持灯与火焰法杖的兜帽狂信者"
+},
+"bearded hooded zealot with sash": {
+"name": "系绶带的络腮胡兜帽狂信者"
+},
+"grinning hooded zealot": {
+"name": "咧嘴而笑的兜帽狂信者"
+},
+"Screaming hooded cultist with spirit face": {
+"name": "嘶吼的兜帽狂信者与灵魂面孔"
+},
+"Hooded cultist raising a clawed hand": {
+"name": "举起爪手的兜帽狂信者"
+},
+"Cultist summoning a vision orb": {
+"name": "召唤幻象水晶球的狂信者"
+},
+"Chanting cultist in a woven nest": {
+"name": "巢穴中举爪吟诵的狂信者"
+},
+"Kneeling cultist beneath a crescent moon": {
+"name": "新月下跪拜的狂信者"
+},
+"Hooded cultist with arms crossed": {
+"name": "抱臂而立的兜帽狂信者"
+},
+"Hooded cultist holding a staff diagonally": {
+"name": "斜握法杖的兜帽狂信者"
+},
+"Weeping robed cultist with amulet": {
+"name": "佩戴护符的流泪长袍狂信者"
+},
+"zealot cultist doodle sheet": {
+"name": "狂信者涂鸦图集"
+}
+}
+}

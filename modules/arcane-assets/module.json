@@ -1,0 +1,70 @@
+{
+  "id": "arcane-assets",
+  "title": "Arcane Assets — Portraits & Tokens",
+  "description": "Openly-licensed western-fantasy portraits, face tokens and 4,200+ semantic icons for any system. Art by Gordy Higgins (public domain), The Metropolitan Museum of Art Open Access (CC0), Wikimedia Commons public domain, game-icons.net authors (CC-BY 3.0), and vil — Faces for a Dying Land (zordvil.itch.io, credited). See ATTRIBUTIONS.md inside the module.",
+  "version": "0.1.0",
+  "authors": [
+    {
+      "name": "Arcane Desk"
+    }
+  ],
+  "compatibility": {
+    "minimum": "13.347",
+    "verified": "13.351",
+    "maximum": "13"
+  },
+  "license": "LICENSE",
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    },
+    {
+      "lang": "zh-cn",
+      "name": "简体中文",
+      "path": "lang/zh-cn.json"
+    }
+  ],
+  "esmodules": [
+    "scripts/babele-register.mjs"
+  ],
+  "packs": [
+    {
+      "name": "portraits-doodles",
+      "label": "头像 · 涂鸦风 Portraits — Doodles",
+      "path": "packs/portraits-doodles",
+      "type": "Actor",
+      "banner": "assets/doodles/villager/gordy-villager-001.webp",
+      "system": "dnd5e"
+    },
+    {
+      "name": "named-characters",
+      "label": "头像 · 具名角色 Portraits — Named Characters",
+      "path": "packs/named-characters",
+      "type": "Actor",
+      "banner": "assets/gordy-art/characters/gordy-char-cleric.webp",
+      "system": "dnd5e"
+    },
+    {
+      "name": "classical-portraits",
+      "label": "头像 · 古典油画 Portraits — Classical",
+      "path": "packs/classical-portraits",
+      "type": "Actor",
+      "banner": "assets/classical/knights/met-knights-002.webp",
+      "system": "dnd5e"
+    },
+    {
+      "name": "vil-faces",
+      "label": "Token · 暗黑风头像 Dark Fantasy Faces",
+      "path": "packs/vil-faces",
+      "type": "Actor",
+      "banner": "assets/vil-faces/scvm/vil-fdtl1-scvm-001.webp",
+      "system": "dnd5e"
+    }
+  ],
+  "url": "https://github.com/tanis90/arcanedesk-fvtt-mods/tree/main/modules/arcane-assets",
+  "manifest": "https://raw.githubusercontent.com/tanis90/arcanedesk-fvtt-mods/main/modules/arcane-assets/module.json",
+  "download": "https://github.com/tanis90/arcanedesk-fvtt-mods/releases/download/arcane-assets-v0.1.0/arcane-assets-0.1.0.zip",
+  "readme": "https://github.com/tanis90/arcanedesk-fvtt-mods/tree/main/modules/arcane-assets#readme"
+}
