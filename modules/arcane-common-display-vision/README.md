@@ -15,6 +15,10 @@ The module:
   `monks-common-display.playerdata`;
 - does not update Scene, Actor, Token, User, fog exploration, or ownership data;
 - re-applies the visibility refresh whenever a Scene canvas becomes ready;
+- while a combat is started, reveals the chat log (the table's combat log) on
+  the display client even when Monk's Common Display hides it (`hide-chat`),
+  and hides it again when the combat is deleted — outside combat the Monk's
+  Common Display layout is untouched;
 - requires Foundry VTT 13 and Monk's Common Display 13.01 or newer.
 
 ## Validation

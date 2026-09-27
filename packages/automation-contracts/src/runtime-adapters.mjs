@@ -1,13 +1,8 @@
 export const ARCANE_RUNTIME_INVOCATION_SITES = Object.freeze({
   "hook:dnd5e-pre-use-activity:native-summon": {
     evidence: [
-      'Hooks.on("midi-qol.preItemRollV2", async ({ workflow, usage } = {}) => {',
-      "await prepareNativeSummonResourceCheck(workflow?.activity, usage);",
-      "assertNativeSummonResourceCheck(activity, usageConfig);",
-      'Hooks.on("dnd5e.preUseActivity", (activity, usageConfig, dialogConfig) => {',
-      "return prepareNativeSummonUse(activity, usageConfig, dialogConfig);",
-      'Hooks.on("dnd5e.activityConsumption", (activity, usageConfig, _messageConfig, updates) => {',
-      "finalizeNativeSummonSelection(activity, usageConfig);",
+      'Hooks.on("dnd5e.preUseActivity", (activity, usageConfig) => {',
+      "return prepareNativeSummonUse(activity, usageConfig);",
     ],
   },
   "hook:dnd5e-pre-summon:native-summon": {
@@ -169,10 +164,9 @@ export const ARCANE_RUNTIME_RULE_ADAPTERS = Object.freeze({
           },
           {
             handler: "preflightOwnedWeaponAttack",
-            site: "hook:dnd5e-pre-use-activity",
+            site: "hook:midi-pre-item-roll",
             evidence: [
-              "const ownedWeaponBlock = preflightOwnedWeaponAttack(",
-              "ownedWeaponBlock.code",
+              "?? preflightOwnedWeaponAttack(actor, item, activity)",
             ],
           },
         ],
