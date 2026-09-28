@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {inflateSync} from 'fflate';
 import {ossUrls, addPackage, verifyMirror, zipRootEntries} from './oss-mirror-publish.mjs';
 
@@ -53,7 +54,7 @@ async function liveIndex() {
 }
 
 // Minimal zip reader: central directory → the one entry named module.json → inflate it.
-function readZipModuleJson(buffer) {
+export function readZipModuleJson(buffer) {
   const names = zipRootEntries(buffer); // validates structure
   const index = names.indexOf('module.json');
   if (index < 0) throw new Error('zip: module.json not at root');
@@ -77,13 +78,22 @@ function readZipModuleJson(buffer) {
   return JSON.parse(Buffer.from(raw).toString('utf8'));
 }
 
-async function releaseByTag(tag) {
+export async function releaseByTag(tag) {
   const res = await gh(`/repos/${REPO}/releases/tags/${tag}`);
   return res.status === 200 ? res.json() : null;
 }
 
-async function downloadAsset(assetUrl, token) {
-  const res = await gh(assetUrl, {token, accept: 'application/octet-stream'});
+export async function downloadAsset(assetUrl, token = process.env.GITHUB_TOKEN) {
+  // asset.url is a full https://api.github.com/... URL. It 302-redirects to a signed
+  // objects.githubusercontent.com URL which rejects a forwarded Authorization header,
+  // so follow the redirect manually and fetch the signed URL anonymously.
+  const res = await fetch(assetUrl, {headers: ghHeaders(token, 'application/octet-stream'), redirect: 'manual', cache: 'no-store'});
+  const target = res.status === 302 ? res.headers.get('location') : null;
+  if (target) {
+    const bin = await fetch(target, {cache: 'no-store'});
+    if (!bin.ok) throw new Error(`asset download (signed) -> HTTP ${bin.status}`);
+    return Buffer.from(await bin.arrayBuffer());
+  }
   if (!res.ok) throw new Error(`asset download -> HTTP ${res.status}`);
   return Buffer.from(await res.arrayBuffer());
 }
@@ -108,7 +118,8 @@ async function createReleaseWithAsset({id, version, zipPath, token}) {
   if (!release.assets.some(a => a.name === assetName)) {
     const uploaded = await fetch(`https://uploads.github.com/repos/${REPO}/releases/${release.id}/assets?name=${encodeURIComponent(assetName)}`, {
       method: 'POST',
-      headers: {...ghHeaders(token, 'application/zip'), 'Content-Type': 'application/zip'},
+      // uploads.github.com requires a JSON Accept; the zip type goes in Content-Type.
+      headers: {...ghHeaders(token), 'Content-Type': 'application/zip'},
       body: await readFile(zipPath),
     });
     if (!uploaded.ok) throw new Error(`asset upload -> HTTP ${uploaded.status}: ${await uploaded.text()}`);
@@ -250,4 +261,6 @@ async function main() {
   throw new Error(`unknown command: ${command ?? '(none)'} — expected plan | publish-all | audit`);
 }
 
-main().catch(error => { console.error(`error: ${error.message}`); process.exit(1); });
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch(error => { console.error(`error: ${error.message}`); process.exit(1); });
+}
