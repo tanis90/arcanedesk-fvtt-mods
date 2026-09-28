@@ -7,6 +7,7 @@ Independent Foundry VTT modules maintained by ArcaneDesk. Each module has its ow
 | arcane-common-display-vision | Full-scene overview for Monk's Common Display, preserving GM-hidden tokens | Foundry 13, Monk's Common Display 13.01+ |
 | arcane-dice-so-nice-dnd5e-fix | Correct the Dice So Nice dd preset to render a d20 | Foundry 13, Dice So Nice 5.2.5, dnd5e 5.3.3 |
 | arcane-spells-2014 | Generate automated spells from existing 2014 content | Foundry 13, dnd5e 5.3.3, Midi-QOL, DAE |
+| sheetshare-mobile | Mobile-first, password-protected character sheet sharing | Foundry 13, dnd5e 5.3+ |
 
 These modules do not require ArcaneDesk Desktop. Their third-party dependencies are installed separately.
 
@@ -29,7 +30,7 @@ Tests check the adapters with controlled Foundry mocks; they do not claim a new 
 
 Auto 2014's shared compiler is available under [packages/auto2014-compiler](packages/auto2014-compiler/README.md).
 Its canonical runtime source is available under [packages/auto2014-runtime](packages/auto2014-runtime/README.md).
-The [automation catalogue](packages/auto2014-catalogue/README.md) contains 187 recipes that compose
+The [automation catalogue](packages/auto2014-catalogue/README.md) contains 186 recipes that compose
 caller-supplied content through the shared compiler. The complete installable Foundry module remains under
 separation; these source packages do not distribute the existing full-text compendiums or summon creature data.
 The catalogue's `./summons` entry assembles summon Actors from caller-provided content and separately
@@ -45,4 +46,5 @@ Issues and pull requests are welcome. Accepted changes are integrated into the m
 and exported here, preserving contributor attribution. Public source must remain independently buildable.
 
 Arcane-owned source in this repository is Apache-2.0 licensed; see LICENSE and NOTICE.
+The `sheetshare-mobile` module is MIT licensed; see [modules/sheetshare-mobile/LICENSE](modules/sheetshare-mobile/LICENSE).
 No license is granted here for Foundry VTT, D&D publications, or other third-party modules and artwork.

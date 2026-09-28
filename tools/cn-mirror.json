@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "comment": "Every directory under modules/ must be registered here with an explicit CN mirror decision; verify fails otherwise. artifact: 'build' = pipeline builds the zip from this tree and creates the GitHub Release. 'release' = module ships local-only binary assets (gitignored); the maintainer cuts the GitHub Release from a local full build and the pipeline mirrors those exact release bytes.",
+  "modules": {
+    "arcane-common-display-vision": { "cnMirror": true, "artifact": "build", "reason": "Own utility module" },
+    "arcane-dice-so-nice-dnd5e-fix": { "cnMirror": true, "artifact": "build", "reason": "Own fix module" },
+    "sheetshare-mobile": { "cnMirror": true, "artifact": "release", "reason": "Own MIT module; assets/ (example avatar png) stays local-only" },
+    "arcane-spells-2014": { "cnMirror": false, "reason": "CN is served by the internal full pack arcane-dnd5e-2014-automation" },
+    "arcane-assets": { "cnMirror": true, "artifact": "release", "reason": "Own asset module; assets/ and packs/ stay local-only, release zip mirrors release bytes" }
+  }
+}

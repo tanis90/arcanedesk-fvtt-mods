@@ -9,6 +9,9 @@ export function createCharacterOptionTools({moduleId, uuidFor, bindings: input})
     if (!bindings[key] || typeof bindings[key] !== 'object' || Array.isArray(bindings[key])) throw Error('Missing character option table');
   }
   const {backgroundIdentifierOverrides,backgroundFeatureOverrides,featIdentifierOverrides,featStaticEffectSpecs,featAdvancementSpecs} = bindings;
+  // Declared-tier feats must also publish the declaredRider contract flag: the
+  // turn protocol lists and validates rider declarations exclusively from flags[moduleId].declaredRider.
+  const declaredPowerAttackFeatRiders = bindings.declaredPowerAttackFeatRiders ?? {};
   const clone = value => JSON.parse(JSON.stringify(value));
   function normalizeSourceIdentifier(identifier) {
     return String(identifier ?? "")
@@ -197,6 +200,8 @@ export function createCharacterOptionTools({moduleId, uuidFor, bindings: input})
       featSource: doc.system?.source?.book ?? "",
       automation: automationTier,
     };
+    const declaredRider = declaredPowerAttackFeatRiders[doc._id];
+    if (declaredRider) doc.flags[moduleId].declaredRider = { ...declaredRider };
 
     // Keep builder cards free of incomplete imported action shells.
     // Explicit static/advancement configuration is applied below.

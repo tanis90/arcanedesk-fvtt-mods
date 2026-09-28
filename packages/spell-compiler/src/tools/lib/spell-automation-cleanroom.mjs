@@ -163,7 +163,6 @@ const PROVIDER_LEAK_STRING_PATTERNS = [
   /\b[a-z][a-z0-9-]+-v\d+\b/i,
 ];
 const PER_SPELL_SCRIPT_EVENTS = new Set([
-  "damage-die-selection",
   "declared-rider-after-damage",
   "repeat-save-outcome",
   "typed-damage-transaction",
@@ -557,14 +556,12 @@ export function parameterValue(id) {
 
 export function enumParameter(id, values, {
   labels = {},
-  defaultValue,
 } = {}) {
   return sourcePrimitive("parameter", "enum", {
     id,
     values: [...values],
-    lowering: defaultValue === undefined ? "named-actions" : "runtime-default",
+    lowering: "named-actions",
     labels: { ...labels },
-    ...(defaultValue === undefined ? {} : { defaultValue }),
   });
 }
 
@@ -896,7 +893,6 @@ export function cleanRoomEffect(id, {
  */
 export function cleanRoomSummonedEntity(id, {
   pool,
-  combat = "independent",
   selection = null,
   rulesModel = "bg3-simplified",
   deltaBindings = [],
@@ -935,7 +931,7 @@ export function cleanRoomSummonedEntity(id, {
       placement: { type: "native-token-placement" },
       disposition: "inherit-source",
       ownership: "unique-active-source-owner-or-gm",
-      combat,
+      combat: "independent",
       deltaBindings: clone(deltaBindings),
       control: clone(control),
       cleanup: clone(cleanup),
@@ -1397,8 +1393,7 @@ function validateParameterValue(value, path) {
 function validateActionParameter(value, path) {
   assertExactKeys(
     value,
-    ["primitive", "type", "id", "values", "lowering", "labels",
-      ...(value.lowering === "runtime-default" ? ["defaultValue"] : [])],
+    ["primitive", "type", "id", "values", "lowering", "labels"],
     path,
   );
   if (value.primitive !== "parameter" || value.type !== "enum") {
@@ -1419,13 +1414,10 @@ function validateActionParameter(value, path) {
   if (value.values.some(entry => !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(entry))) {
     throw new Error(`${path}.values must be safe action identifier segments`);
   }
-  if (!["named-actions", "runtime-required", "runtime-default"].includes(value.lowering)) {
+  if (!["named-actions", "runtime-required"].includes(value.lowering)) {
     throw new Error(
-      `${path}.lowering must be named-actions, runtime-required or runtime-default`,
+      `${path}.lowering must be named-actions or runtime-required`,
     );
-  }
-  if (value.lowering === "runtime-default" && !value.values.includes(value.defaultValue)) {
-    throw new Error(`${path}.defaultValue must be one of its enum values`);
   }
   assertObject(value.labels, `${path}.labels`);
   const unknownLabels = Object.keys(value.labels).filter(key => !value.values.includes(key));
@@ -3058,15 +3050,12 @@ function validateArtifact(value, path) {
         profile.cardinality.type === "fixed-three"
         && profile.cardinality.count === 3
       ) || (
-        profile.cardinality.type === "fixed-four"
-        && profile.cardinality.count === 4
-      ) || (
         profile.cardinality.type === "fixed-group"
         && profile.cardinality.count === 5
       );
       if (!canonicalCardinality) {
         throw new Error(
-          `${profilePath}.cardinality must be single/count 1, fixed-small/count 2, fixed-three/count 3, fixed-four/count 4, or fixed-group/count 5`,
+          `${profilePath}.cardinality must be single/count 1, fixed-small/count 2, fixed-three/count 3, or fixed-group/count 5`,
         );
       }
       if (profileChoices.has(profile.choice)) {
@@ -3141,8 +3130,8 @@ function validateArtifact(value, path) {
         `${path}.state.ownership must be unique-active-source-owner-or-gm`,
       );
     }
-    if (!["independent", "none"].includes(value.state.combat)) {
-      throw new Error(`${path}.state.combat must be independent or none`);
+    if (value.state.combat !== "independent") {
+      throw new Error(`${path}.state.combat must be independent`);
     }
     if (!Array.isArray(value.state.deltaBindings)) {
       throw new Error(`${path}.state.deltaBindings must be an array`);
@@ -4164,9 +4153,8 @@ function validatePerSpellScript(definition, artifacts, rules) {
     if (!PER_SPELL_SCRIPT_EVENTS.has(handler.event)) {
       throw new Error(`${handlerPath}.event is unsupported: ${handler.event}`);
     }
-    const authority = handler.event === "damage-die-selection" ? "damage-roll-caller" : "primary-active-gm";
-    if (handler.authority !== authority) {
-      throw new Error(`${handlerPath}.authority must be ${authority}`);
+    if (handler.authority !== "primary-active-gm") {
+      throw new Error(`${handlerPath}.authority must be primary-active-gm`);
     }
     assertString(handler.dedupe, `${handlerPath}.dedupe`);
     if (!["source", "script"].includes(handler.cleanupOwner)) {
@@ -4180,26 +4168,7 @@ function validatePerSpellScript(definition, artifacts, rules) {
     ) {
       throw new Error(`${handlerPath}.writes must contain unique non-empty strings`);
     }
-    if (handler.event === "damage-die-selection") {
-      const sourceRule = rulesById.get(handler.runtimeRuleId);
-      const configuration = handler.configuration;
-      assertExactKeys(configuration, ["schemaVersion", "allowedFaces"], `${handlerPath}.configuration`);
-      const faces = configuration?.allowedFaces;
-      if (!sourceRule || sourceRule.on?.type !== "action-used"
-        || (sourceRule.do ?? []).filter(operation => operation.type === "damage").length !== 1
-        || (sourceRule.targets ?? []).length !== 1
-        || sourceRule.targets[0].origin?.type !== "selected"
-        || sourceRule.targets[0].cardinality?.min !== 1 || sourceRule.targets[0].cardinality?.max !== 1
-        || (sourceRule.when ?? []).length
-        || configuration?.schemaVersion !== 1 || !Array.isArray(faces) || !faces.length
-        || new Set(faces).size !== faces.length
-        || faces.some(face => !Number.isInteger(face) || face < 2 || face > 100)
-        || handler.ruleId !== undefined || handler.artifactId !== undefined || handler.outcomes.length
-        || handler.cleanupOwner !== "source"
-        || handler.writes.length !== 1 || handler.writes[0] !== "workflow:base-damage-die") {
-        throw new Error(`${handlerPath} requires one unconditional single-target damage rule and a closed die selection contract`);
-      }
-    } else if (handler.event === "declared-rider-after-damage") {
+    if (handler.event === "declared-rider-after-damage") {
       assertString(handler.runtimeRuleId, `${handlerPath}.runtimeRuleId`);
       const rule = rulesById.get(handler.runtimeRuleId);
       if (

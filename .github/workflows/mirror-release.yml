@@ -1,0 +1,93 @@
+name: CN mirror release
+
+# arcane-mirror 是自有 mod 的一等公民：公开 main 上的版本变化在 CI 里感知，
+# GitHub Release 与 CN 镜像同批发布。决策表在 tools/cn-mirror.json（穷举，漏登记 verify 失败）。
+# artifact 'release' 的模块（sheetshare-mobile、arcane-assets）镜像的是维护者本地
+# 全量构建切出的 Release zip 字节；'build' 的模块由本管线构建并开 Release。
+# OSS 凭证挂在 mirror-release environment（非 repo 级）：不引用 environment 的
+# job 读不到值，引用即触发人工审批。
+
+on:
+  push:
+    branches: [main]
+    paths: ['modules/**', 'tools/**', '.github/workflows/mirror-release.yml']
+  workflow_dispatch:
+  schedule:
+    - cron: '37 5 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cn-mirror-release
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      pending: ${{ steps.plan.outputs.pending }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npm run verify
+      - id: plan
+        run: |
+          node tools/release-cn.mjs plan > plan.json
+          pending=$(node -e 'const p=require("./plan.json").filter(d=>d.action==="publish");console.log(JSON.stringify(p))')
+          echo "pending=$pending" >> "$GITHUB_OUTPUT"
+          cat plan.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cn-mirror-plan
+          path: plan.json
+
+  publish:
+    needs: plan
+    if: needs.plan.outputs.pending != '[]'
+    runs-on: ubuntu-latest
+    environment: mirror-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - name: Publish pending modules to the CN mirror
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OSS_ACCESS_KEY_ID: ${{ secrets.OSS_RELEASE_KEY_ID }}
+          OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_RELEASE_KEY_SECRET }}
+        run: node tools/release-cn.mjs publish-all
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: cn-mirror-publish-receipt
+          path: plan.json
+          if-no-files-found: ignore
+
+  audit:
+    needs: [plan, publish]
+    if: always() && !cancelled() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: node tools/release-cn.mjs audit
