@@ -24,7 +24,7 @@ export const INDEX_KEY = 'index.json';
 export const INDEX_URL = `${BASE_URL}/${INDEX_KEY}`;
 const INDEX_CACHE_CONTROL = 'no-cache, max-age=0, must-revalidate';
 const OBJECT_CACHE_CONTROL = 'public, max-age=31536000, immutable';
-const IF_MATCH_ATTEMPTS = 3;
+const INDEX_WRITE_ATTEMPTS = 3;
 
 export function ossUrls(id, version) {
   return {
@@ -96,40 +96,53 @@ async function fetchIndex(client) {
   const res = await client.get(INDEX_KEY);
   const index = JSON.parse(res.content.toString('utf8'));
   if (!Array.isArray(index.packages)) throw new Error('index.json has no packages[]');
-  const etag = res.res?.headers?.etag;
-  if (!etag) throw new Error('index.json GET returned no ETag');
-  return {index, etag};
-}
-
-function isConflict(error) {
-  return error?.status === 412 || error?.code === 'PreconditionFailed' || error?.statusCode === 412;
-}
-
-// mutate(index) -> nextIndex or null (nothing to do). The merge is retried against a
-// freshly fetched index on ETag conflict, so concurrent writers converge instead of
-// clobbering each other's entries.
-export async function commitIndex(client, mutate) {
-  for (let attempt = 1; attempt <= IF_MATCH_ATTEMPTS; attempt += 1) {
-    const {index, etag} = await fetchIndex(client);
-    const next = await mutate(index);
-    if (!next) return null;
-    try {
-      await client.put(INDEX_KEY, Buffer.from(serializeIndexCrlf(next), 'utf8'), {
-        headers: {'If-Match': etag, 'Cache-Control': INDEX_CACHE_CONTROL},
-      });
-      return next;
-    } catch (error) {
-      if (!isConflict(error)) throw error;
-    }
-  }
-  throw new Error(`index.json update conflicted ${IF_MATCH_ATTEMPTS} times`);
+  return {index, etag: res.res?.headers?.etag};
 }
 
 export async function putImmutable(client, key, buffer, contentType) {
-  await client.put(key, buffer, {
-    headers: {'x-oss-forbid-overwrite': 'true', 'Cache-Control': OBJECT_CACHE_CONTROL},
-    mime: contentType,
-  });
+  try {
+    await client.put(key, buffer, {
+      headers: {'x-oss-forbid-overwrite': 'true', 'Cache-Control': OBJECT_CACHE_CONTROL},
+      mime: contentType,
+    });
+  } catch (error) {
+    // Idempotent replays: retrying a publish whose objects already landed must not
+    // fail. OSS rejects any re-put to an existing key (forbid-overwrite), so compare
+    // the stored object's ETag (= MD5 for single-part puts) against our bytes.
+    if (error?.code === 'FileAlreadyExists' || error?.status === 409) {
+      const head = await client.head(key);
+      const stored = (head?.res?.headers?.etag || '').replace(/"/g, '');
+      const expected = createHash('md5').update(buffer).digest('hex');
+      if (stored === expected) return;
+      throw new Error(`immutable object exists with different bytes: ${key}`);
+    }
+    throw error;
+  }
+}
+
+// mutate(index) -> nextIndex or null (nothing to do).
+// Aliyun OSS PutObject has no conditional write (If-Match exists on Get/Head only;
+// the 2024 conditional-write feature is If-None-Match:* create-if-absent), so the
+// fetch-merge-put cycle is guarded by a post-write read-back instead: every entry of
+// the fetched base plus our additions must be present in the index we just overwrote,
+// otherwise another writer interleaved and the merge is retried from a fresh fetch.
+// Both CI tracks serialize themselves via workflow concurrency groups; the residual
+// window is a CI publish racing a local manual publish within the same second.
+export async function commitIndex(client, mutate) {
+  for (let attempt = 1; attempt <= INDEX_WRITE_ATTEMPTS; attempt += 1) {
+    const {index} = await fetchIndex(client);
+    const next = await mutate(index);
+    if (!next) return null;
+    await client.put(INDEX_KEY, Buffer.from(serializeIndexCrlf(next), 'utf8'), {
+      headers: {'Cache-Control': INDEX_CACHE_CONTROL},
+    });
+    const {index: after} = await fetchIndex(client);
+    const afterIds = new Set(after.packages.map(e => `${e.id}@${e.version}`));
+    const survived = index.packages.every(e => afterIds.has(`${e.id}@${e.version}`));
+    const landed = next.packages.every(e => afterIds.has(`${e.id}@${e.version}`));
+    if (survived && landed) return after;
+  }
+  throw new Error(`index.json update failed read-back verification ${INDEX_WRITE_ATTEMPTS} times`);
 }
 
 export async function addPackage(client, {id, version, group, zipBuffer, manifest}) {

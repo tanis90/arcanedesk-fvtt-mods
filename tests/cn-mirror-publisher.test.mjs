@@ -4,7 +4,7 @@ import test from 'node:test';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 
-import {mergeIndex, rewriteManifest, serializeIndexCrlf, commitIndex, addPackage, ossUrls} from '../tools/oss-mirror-publish.mjs';
+import {mergeIndex, rewriteManifest, serializeIndexCrlf, commitIndex, addPackage, putImmutable, ossUrls} from '../tools/oss-mirror-publish.mjs';
 
 const manifest = {id: 'demo', version: '1.2.3', download: 'https://github.com/x/y/releases/download/v1.2.3/demo.zip'};
 
@@ -14,8 +14,8 @@ function fakeIndex(...entries) {
 
 test('rewriteManifest points download/manifest at the bucket', () => {
   const next = rewriteManifest(manifest, 'demo', '1.2.3');
-  assert.equal(next.download, `${ossUrls('demo', '1.2.3').zipUrl}`);
-  assert.equal(next.manifest, `${ossUrls('demo', '1.2.3').manifestUrl}`);
+  assert.equal(next.download, ossUrls('demo', '1.2.3').zipUrl);
+  assert.equal(next.manifest, ossUrls('demo', '1.2.3').manifestUrl);
   assert.equal(next.id, 'demo');
 });
 
@@ -27,58 +27,61 @@ test('mergeIndex rejects an immutable id@version and sorts by group/id', () => {
   assert.ok(serializeIndexCrlf(next).includes('\r\n'));
 });
 
-test('commitIndex retries the merge on ETag conflict and converges', async () => {
-  let etags = 0;
-  const client = {
-    async get() {
-      etags += 1;
-      const index = etags === 1 ? fakeIndex() : fakeIndex({id: 'other', version: '0.0.1', group: 'arcane'});
-      return {content: Buffer.from(JSON.stringify(index)), res: {headers: {etag: `etag-${etags}`}}};
-    },
-    puts: [],
-    async put(key, buffer, {headers}) {
-      this.puts.push({key, etag: headers['If-Match']});
-      if (headers['If-Match'] === 'etag-1') {
-        throw Object.assign(new Error('conflict'), {status: 412, code: 'PreconditionFailed'});
-      }
-    },
-  };
-  const next = await commitIndex(client, index => mergeIndex(index, {id: 'demo', version: '1.2.3', group: 'arcane'}));
-  assert.equal(next.packages.length, 2, 'retried merge keeps the concurrently added entry');
-  assert.equal(client.puts.length, 2);
-});
-
-test('commitIndex gives up after three conflicts', async () => {
-  let gets = 0;
-  const client = {
-    async get() { gets += 1; return {content: Buffer.from(JSON.stringify(fakeIndex())), res: {headers: {etag: `e${gets}`}}}; },
-    async put(key, buffer, {headers}) { throw Object.assign(new Error('conflict'), {status: 412}); },
-  };
-  await assert.rejects(() => commitIndex(client, index => mergeIndex(index, {id: 'demo', version: '1', group: 'arcane'})), /conflicted 3 times/);
-  assert.equal(gets, 3);
-});
-
-function fakeClientForAdd() {
-  const store = new Map();
+// Index store that can interleave a concurrent writer: after the first index PUT the
+// read-back shows the concurrent writer's index (our entry lost) once, then behaves.
+function clientWithRace() {
   const state = {index: fakeIndex()};
-  let etagSeq = 0;
+  let puts = 0;
+  let raceDone = false;
   return {
-    store, state,
+    state, puts: () => puts,
     async get(key) {
-      if (key === 'index.json') return {content: Buffer.from(JSON.stringify(state.index)), res: {headers: {etag: `e${++etagSeq}`}}};
-      throw new Error('unexpected get ' + key);
-    },
-    async put(key, buffer, {headers}) {
-      if (key === 'index.json') {
-        state.index = JSON.parse(buffer.toString('utf8'));
-        return;
+      if (key !== 'index.json') throw new Error('unexpected get ' + key);
+      if (puts === 1 && !raceDone) {
+        raceDone = true;
+        state.index = fakeIndex({id: 'other', version: '0.0.1', group: 'arcane'}); // our write got clobbered
       }
-      if (store.has(key)) throw new Error('overwrite of immutable object: ' + key);
-      if (headers?.['x-oss-forbid-overwrite'] !== 'true') throw new Error('missing forbid-overwrite on ' + key);
-      store.set(key, buffer);
+      return {content: Buffer.from(JSON.stringify(state.index)), res: {headers: {etag: 'e'}}};
+    },
+    async put(key, buffer) {
+      if (key === 'index.json') { puts += 1; state.index = JSON.parse(buffer.toString('utf8')); return; }
+      throw new Error('unexpected object put');
     },
   };
 }
+
+test('commitIndex detects a lost write on read-back and re-merges from fresh state', async () => {
+  const client = clientWithRace();
+  const result = await commitIndex(client, index => mergeIndex(index, {id: 'demo', version: '1.2.3', group: 'arcane'}));
+  assert.deepEqual(result.packages.map(p => p.id).sort(), ['demo', 'other'], 'retry keeps the concurrent entry');
+  assert.equal(client.puts(), 2);
+});
+
+test('commitIndex gives up after three failed read-backs', async () => {
+  let gets = 0;
+  const client = {
+    async get() {
+      gets += 1;
+      // read-backs (even gets) always show a foreign index: our write never survives
+      const index = gets % 2 === 0 ? fakeIndex({id: 'foreign', version: '9', group: 'x'}) : fakeIndex();
+      return {content: Buffer.from(JSON.stringify(index)), res: {headers: {etag: 'e'}}};
+    },
+    async put(key, buffer) { /* write lands but the read-back above never confirms */ },
+  };
+  await assert.rejects(() => commitIndex(client, index => mergeIndex(index, {id: 'demo', version: '1', group: 'arcane'})), /read-back verification 3 times/);
+});
+
+test('putImmutable replays identical bytes idempotently and rejects different bytes', async () => {
+  const buffer = Buffer.from('payload');
+  const md5 = createHash('md5').update(buffer).digest('hex');
+  const makeClient = etag => ({
+    puts: 0,
+    async put() { throw Object.assign(new Error('exists'), {code: 'FileAlreadyExists', status: 409}); },
+    async head() { return {res: {headers: {etag: `"${etag}"`}}}; },
+  });
+  await putImmutable(makeClient(md5), 'packages/demo/1/demo.zip', buffer, 'application/zip');
+  await assert.rejects(() => putImmutable(makeClient('deadbeef'), 'packages/demo/1/demo.zip', buffer, 'application/zip'), /different bytes/);
+});
 
 function zipWithRootModuleJson() {
   // hand-rolled stored (method 0) zip containing only module.json
@@ -87,8 +90,8 @@ function zipWithRootModuleJson() {
   const local = Buffer.alloc(30 + name.length + content.length);
   local.writeUInt32LE(0x04034b50, 0);
   local.writeUInt16LE(0, 6); local.writeUInt16LE(0, 8); // no flags, method 0
-  local.writeUInt32LE(0, 14); // dos time/date
-  local.writeUInt32LE(0, 18); // crc (not checked by the validator)
+  local.writeUInt32LE(0, 14);
+  local.writeUInt32LE(0, 18); // crc (not validated by the publisher)
   local.writeUInt32LE(content.length, 22); local.writeUInt32LE(content.length, 26);
   local.writeUInt16LE(name.length, 28);
   name.copy(local, 30); content.copy(local, 30 + name.length);
@@ -107,6 +110,32 @@ function zipWithRootModuleJson() {
   return Buffer.concat([local, central, eocd]);
 }
 
+function fakeClientForAdd({preExistingObjects = false} = {}) {
+  const store = new Map();
+  const state = {index: fakeIndex()};
+  let etagSeq = 0;
+  return {
+    store, state,
+    async get(key) {
+      if (key === 'index.json') return {content: Buffer.from(JSON.stringify(state.index)), res: {headers: {etag: `e${++etagSeq}`}}};
+      throw new Error('unexpected get ' + key);
+    },
+    async head(key) {
+      const bytes = store.get(key);
+      if (!bytes) throw new Error('head: missing ' + key);
+      return {res: {headers: {etag: `"${createHash('md5').update(bytes).digest('hex')}"`}}};
+    },
+    async put(key, buffer, {headers} = {}) {
+      if (key === 'index.json') { state.index = JSON.parse(buffer.toString('utf8')); return; }
+      if (store.has(key)) throw Object.assign(new Error('exists'), {code: 'FileAlreadyExists', status: 409});
+      if (headers?.['x-oss-forbid-overwrite'] !== 'true') throw new Error('missing forbid-overwrite on ' + key);
+      store.set(key, buffer);
+    },
+    seed(key, buffer) { store.set(key, buffer); },
+    get preExisting() { return preExistingObjects; },
+  };
+}
+
 test('addPackage uploads immutable objects and appends the index entry', async () => {
   const client = fakeClientForAdd();
   const zipBuffer = zipWithRootModuleJson();
@@ -118,6 +147,19 @@ test('addPackage uploads immutable objects and appends the index entry', async (
   assert.equal(mirrored.download, ossUrls('demo', '1.2.3').zipUrl);
   assert.deepEqual(client.state.index.packages.map(p => p.id), ['demo']);
   await assert.rejects(() => addPackage(client, {id: 'demo', version: '1.2.3', group: 'arcane', zipBuffer, manifest}), /immutable/);
+});
+
+test('addPackage replays cleanly after objects landed but the index write failed', async () => {
+  const client = fakeClientForAdd();
+  const zipBuffer = zipWithRootModuleJson();
+  // first run: objects land, index never records them (interrupt before commitIndex)
+  await putImmutable(client, 'packages/demo/1.2.3/demo-1.2.3.zip', zipBuffer, 'application/zip');
+  await putImmutable(client, 'packages/demo/1.2.3/module.json',
+    Buffer.from(`${JSON.stringify(rewriteManifest(manifest, 'demo', '1.2.3'), null, 2)}\n`), 'application/json');
+  // second run must succeed via the idempotent object path
+  const entry = await addPackage(client, {id: 'demo', version: '1.2.3', group: 'arcane', zipBuffer, manifest});
+  assert.equal(entry.id, 'demo');
+  assert.deepEqual(client.state.index.packages.map(p => p.id), ['demo']);
 });
 
 test('addPackage rejects a manifest/zip identity mismatch', async () => {
