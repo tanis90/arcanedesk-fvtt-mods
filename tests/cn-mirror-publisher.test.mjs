@@ -73,14 +73,14 @@ test('commitIndex gives up after three failed read-backs', async () => {
 
 test('putImmutable replays identical bytes idempotently and rejects different bytes', async () => {
   const buffer = Buffer.from('payload');
-  const md5 = createHash('md5').update(buffer).digest('hex');
-  const makeClient = etag => ({
-    puts: 0,
+  const makeClient = (storedBytes, lengthOverride) => ({
     async put() { throw Object.assign(new Error('exists'), {code: 'FileAlreadyExists', status: 409}); },
-    async head() { return {res: {headers: {etag: `"${etag}"`}}}; },
+    async head() { return {res: {headers: {'content-length': String(lengthOverride ?? storedBytes.length)}}}; },
+    async get() { return {content: storedBytes}; },
   });
-  await putImmutable(makeClient(md5), 'packages/demo/1/demo.zip', buffer, 'application/zip');
-  await assert.rejects(() => putImmutable(makeClient('deadbeef'), 'packages/demo/1/demo.zip', buffer, 'application/zip'), /different bytes/);
+  await putImmutable(makeClient(buffer), 'packages/demo/1/demo.zip', buffer, 'application/zip');
+  await assert.rejects(() => putImmutable(makeClient(Buffer.from('other')), 'packages/demo/1/demo.zip', buffer, 'application/zip'), /different bytes/);
+  await assert.rejects(() => putImmutable(makeClient(buffer, 99), 'packages/demo/1/demo.zip', buffer, 'application/zip'), /different bytes/);
 });
 
 function zipWithRootModuleJson() {
@@ -118,12 +118,14 @@ function fakeClientForAdd({preExistingObjects = false} = {}) {
     store, state,
     async get(key) {
       if (key === 'index.json') return {content: Buffer.from(JSON.stringify(state.index)), res: {headers: {etag: `e${++etagSeq}`}}};
+      const bytes = store.get(key);
+      if (bytes) return {content: bytes};
       throw new Error('unexpected get ' + key);
     },
     async head(key) {
       const bytes = store.get(key);
       if (!bytes) throw new Error('head: missing ' + key);
-      return {res: {headers: {etag: `"${createHash('md5').update(bytes).digest('hex')}"`}}};
+      return {res: {headers: {'content-length': String(bytes.length)}}};
     },
     async put(key, buffer, {headers} = {}) {
       if (key === 'index.json') { state.index = JSON.parse(buffer.toString('utf8')); return; }
