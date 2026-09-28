@@ -2,7 +2,7 @@
   "id": "sheetshare-mobile",
   "title": "SheetShare Mobile",
   "description": "Mobile-first, password-protected character sheet sharing for Foundry VTT.",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "authors": [
     {
       "name": "tanis90",
@@ -46,5 +46,5 @@
   ],
   "url": "https://github.com/tanis90/arcanedesk-fvtt-mods/tree/main/modules/sheetshare-mobile",
   "manifest": "https://raw.githubusercontent.com/tanis90/arcanedesk-fvtt-mods/main/modules/sheetshare-mobile/module.json",
-  "download": "https://github.com/tanis90/arcanedesk-fvtt-mods/releases/download/sheetshare-mobile-v0.4.1/sheetshare-mobile-0.4.1.zip"
+  "download": "https://github.com/tanis90/arcanedesk-fvtt-mods/releases/download/sheetshare-mobile-v0.5.0/sheetshare-mobile-0.5.0.zip"
 }
