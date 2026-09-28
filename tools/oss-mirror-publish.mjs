@@ -107,13 +107,17 @@ export async function putImmutable(client, key, buffer, contentType) {
     });
   } catch (error) {
     // Idempotent replays: retrying a publish whose objects already landed must not
-    // fail. OSS rejects any re-put to an existing key (forbid-overwrite), so compare
-    // the stored object's ETag (= MD5 for single-part puts) against our bytes.
+    // fail. OSS rejects any re-put to an existing key (forbid-overwrite), and its
+    // ETag is not reliably the content MD5 (chunked uploads get a UUID), so compare
+    // by size via HEAD and then by full content hash via GET.
     if (error?.code === 'FileAlreadyExists' || error?.status === 409) {
       const head = await client.head(key);
-      const stored = (head?.res?.headers?.etag || '').replace(/"/g, '');
-      const expected = createHash('md5').update(buffer).digest('hex');
-      if (stored === expected) return;
+      const storedLength = Number(head?.res?.headers?.['content-length']);
+      if (storedLength === buffer.length) {
+        const stored = await client.get(key);
+        const storedHash = createHash('sha256').update(stored.content).digest('hex');
+        if (storedHash === createHash('sha256').update(buffer).digest('hex')) return;
+      }
       throw new Error(`immutable object exists with different bytes: ${key}`);
     }
     throw error;
