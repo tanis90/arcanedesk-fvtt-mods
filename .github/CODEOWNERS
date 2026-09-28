@@ -1,0 +1,4 @@
+# Workflow files and release tooling gate the public supply chain; owner review
+# on every change even outside the export flow.
+/.github/ @tanis90
+/tools/ @tanis90

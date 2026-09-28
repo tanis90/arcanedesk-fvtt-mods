@@ -10,7 +10,8 @@
   "scripts": {
     "test": "node modules/arcane-common-display-vision/scripts/validate.mjs && node --test tests/*.test.mjs && npm test --workspaces --if-present",
     "build": "node tools/build.mjs",
-    "verify": "npm test && npm run check:spell-browser && npm run build && npm run pack:check",
+    "check:cn-mirror": "node tools/check-cn-mirror.mjs",
+    "verify": "npm test && npm run check:cn-mirror && npm run check:spell-browser && npm run build && npm run pack:check",
     "pack:check": "node tools/check-compiler-package.mjs",
     "check:spell-browser": "node tools/check-spell-browser.mjs"
   },
@@ -19,6 +20,7 @@
   ],
   "devDependencies": {
     "fflate": "0.8.3",
-    "esbuild": "0.28.2"
+    "esbuild": "0.28.2",
+    "ali-oss": "6.21.0"
   }
 }

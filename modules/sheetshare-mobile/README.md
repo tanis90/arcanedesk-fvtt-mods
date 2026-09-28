@@ -1,0 +1,153 @@
+# SheetShare Mobile
+
+[中文说明](README-zh.md)
+
+Mobile-first character sheet sharing for Foundry VTT. The default mode uses password-protected encrypted snapshots; trusted portal deployments can opt into External Auth.
+
+SheetShare Mobile lets a GM publish a clean mobile character sheet from a Foundry actor. Players open a shared link, enter the table password, and read the sheet on a phone without logging in to Foundry.
+
+![Wizard mobile overview](https://raw.githubusercontent.com/tanis90/sheetshare-mobile/main/docs/screenshots/viewer-wizard-overview.png)
+
+## Features
+
+- Mobile-first D&D 5e character sheet viewer
+- GM-controlled publishing per character
+- Password-protected encrypted static snapshots by default
+- Optional External Auth mode for reverse-proxy or portal-protected deployments
+- No public character index
+- Device-local password memory for opened sheets
+- Auto-refresh after published actors, items, or active effects change
+- English and Simplified Chinese UI
+- Manager and Doctor panels in Foundry settings
+
+Character names, item names, spell names, and descriptions come from your Foundry world data. If your world uses a translation module, the published content follows that setup.
+
+## Requirements
+
+- Foundry VTT v13
+- D&D 5e system 5.3+
+- A modern browser with WebCrypto support
+- HTTPS for public sharing
+
+Local HTTP works for testing, but public links should be served over HTTPS.
+
+## Installation
+
+### From a release zip
+
+1. Download the latest `sheetshare-mobile-<version>.zip` from the
+   [arcanedesk-fvtt-mods releases](https://github.com/tanis90/arcanedesk-fvtt-mods/releases), or install
+   directly in Foundry with the manifest URL:
+   `https://raw.githubusercontent.com/tanis90/arcanedesk-fvtt-mods/main/modules/sheetshare-mobile/module.json`.
+2. Extract it to your Foundry data folder:
+
+   ```text
+   Data/modules/sheetshare-mobile
+   ```
+
+3. Restart Foundry or reload the setup page.
+4. Enable **SheetShare Mobile** in your world.
+
+### From source
+
+Clone the [arcanedesk-fvtt-mods](https://github.com/tanis90/arcanedesk-fvtt-mods) monorepo and copy or
+symlink `modules/sheetshare-mobile` into your Foundry modules directory:
+
+```powershell
+git clone https://github.com/tanis90/arcanedesk-fvtt-mods.git
+Copy-Item -Recurse arcanedesk-fvtt-mods\modules\sheetshare-mobile D:\FVTT_DATA\Data\modules\sheetshare-mobile
+```
+
+Then enable **SheetShare Mobile** in the world module list.
+
+## Usage
+
+1. Log in as GM.
+2. Open a character actor sheet.
+3. Click **Publish to Mobile** in the sheet header.
+4. Enter the table share password.
+5. Click **Copy Mobile Link** and send the link plus password to the player.
+
+Published sheets can be refreshed from the actor sheet header or from the manager panel.
+
+The first publication assigns a stable, human-readable key in the form `<world>-<character-name>`. Unicode names remain readable (for example, `dragonlance-黎安娜-晨盾`), explicit keys are not rewritten, and a short actor-id is appended only when that readable key is already in use. Pure-Chinese actors carrying the legacy `character` fallback migrate automatically on their next refresh.
+
+After a successful unlock, the player viewer remembers that sheet on the same browser. Refreshing or reopening the link unlocks automatically until the GM republishes with a different password. Use **Lock** on shared devices to clear the saved password.
+
+![DM publishing Wizard to mobile](https://raw.githubusercontent.com/tanis90/sheetshare-mobile/main/docs/screenshots/dm-publish-flow.png)
+
+Players open the link on a phone, unlock it with the table password, and get a mobile-first read-only sheet.
+
+If your site already protects the viewer and snapshot assets behind a portal or reverse proxy, switch **Access mode** to **External Auth / trusted portal**. In that mode the GM publishes trusted snapshots and players do not enter a SheetShare password.
+
+External Auth worlds automatically refresh published sheets when the primary GM reaches `ready`. Publication identity checks, clone/import behavior, and world-scoped portrait mirroring are documented in [Publishing lifecycle and portal media](../../../docs/sheetshare/PUBLISHING-LIFECYCLE.md).
+
+## Player Sheet Preview
+
+The shared sheet is the main experience: players get a touch-friendly read-only character sheet with quick access to stats, spell slots, resources, spells, actions, and feature references.
+
+| Stats and skills | Spells |
+| --- | --- |
+| ![Wizard stats and skills](https://raw.githubusercontent.com/tanis90/sheetshare-mobile/main/docs/screenshots/viewer-wizard-overview-stats.png) | ![Wizard spells](https://raw.githubusercontent.com/tanis90/sheetshare-mobile/main/docs/screenshots/viewer-wizard-spells.png) |
+
+| Actions | Features |
+| --- | --- |
+| ![Wizard actions](https://raw.githubusercontent.com/tanis90/sheetshare-mobile/main/docs/screenshots/viewer-wizard-actions.png) | ![Wizard features](https://raw.githubusercontent.com/tanis90/sheetshare-mobile/main/docs/screenshots/viewer-wizard-features.png) |
+
+## Settings
+
+Open **Game Settings > Configure Settings > SheetShare Mobile**.
+
+Available settings:
+
+- **Auto-refresh published sheets**: refreshes published sheets after actor, item, or active effect changes while a GM browser has the share password in memory.
+- **Warn when sharing over HTTP**: shows a Doctor warning when the current Foundry page is not using HTTPS.
+- **Viewer language**: choose browser auto-detection, the Foundry world language, English, or Simplified Chinese.
+- **Access mode**: use password-protected encrypted snapshots, or External Auth for deployments where `/modules/sheetshare-mobile/viewer` and `/assets/sheetshare-mobile` are already protected by your portal or reverse proxy.
+
+The settings page also exposes:
+
+- **Published Sheets**: manage published characters, copy links, refresh, or unpublish.
+- **Doctor**: check storage, viewer assets, protocol, and common setup problems.
+
+## Security
+
+Each published character sheet is stored as an encrypted static snapshot. The password is not placed in the URL and is not sent to the server by the viewer. Directly opening the JSON snapshot does not reveal the character sheet.
+
+For convenience, the viewer can remember the password locally on the player's device after a successful unlock. This local password is cleared by **Lock**, and it stops working if the GM republishes with a different password.
+
+Use HTTPS for public sharing so the link and password entry page are protected in transit.
+
+External Auth mode writes trusted readable snapshots. Only enable it when an outer authentication layer protects both the viewer and `Data/assets/sheetshare-mobile`; otherwise anyone who can fetch the JSON can read the published sheet.
+
+## Language
+
+SheetShare Mobile has English and Simplified Chinese UI for both the Foundry module and the mobile viewer.
+
+The viewer language is selected in this order:
+
+1. `lang` in the share URL
+2. the GM's viewer language setting
+3. the player's browser language
+
+The actor content language is controlled by the GM's Foundry world data and installed translation modules.
+
+## Troubleshooting
+
+- Run **Doctor** from the module settings page first.
+- If storage fails, make sure Foundry can write and serve files under `Data/assets/sheetshare-mobile`.
+- If public sharing shows an HTTP warning, put Foundry behind an HTTPS reverse proxy.
+- If links still show an old UI after updating the module, reload the browser and restart Foundry.
+- If you previously used `cn5e-sheet-export`, disable it to avoid duplicate sheet controls.
+
+## Maintainers
+
+Release instructions are in [docs/RELEASE.md](../../../docs/sheetshare/RELEASE.md).
+
+## Current Scope
+
+The first public target focuses on the common single-GM workflow. Published character sheets auto-refresh after actor, item, and active effect changes while a GM browser is online.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE). The bundled `viewer/assets/alpine.min.js` is [Alpine.js](https://alpinejs.dev/), licensed under the MIT License.

@@ -2,7 +2,7 @@
   "id": "arcane-dice-so-nice-dnd5e-fix",
   "title": "Arcane Dice So Nice DND5E Fix",
   "description": "Local compatibility patch for Dice So Nice v5.2.5 with dnd5e D20Die rolls.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "compatibility": {
     "minimum": "13",
     "verified": "13.351"
@@ -36,5 +36,7 @@
     "scripts/dice-so-nice-dnd5e-dd-fix.js"
   ],
   "license": "LICENSE",
-  "url": "https://github.com/tanis90/arcanedesk-fvtt-mods"
+  "url": "https://github.com/tanis90/arcanedesk-fvtt-mods/tree/main/modules/arcane-dice-so-nice-dnd5e-fix",
+  "manifest": "https://raw.githubusercontent.com/tanis90/arcanedesk-fvtt-mods/main/modules/arcane-dice-so-nice-dnd5e-fix/module.json",
+  "download": "https://github.com/tanis90/arcanedesk-fvtt-mods/releases/download/arcane-dice-so-nice-dnd5e-fix-v0.1.1/arcane-dice-so-nice-dnd5e-fix-0.1.1.zip"
 }

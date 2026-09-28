@@ -56,6 +56,10 @@ test('feat preparation applies explicit effects and advancements while preservin
   assert.deepEqual(bindings.featAdvancementSpecs.OriginalFeat[0].configuration.grants, ['original:trained']);
   assert.equal(api.featAutomationTier({_id: 'OriginalManual'}), 'declared');
   assert.equal(api.featAutomationTier({_id: 'Unknown'}), 'builder');
+  const declared = {_id: 'OriginalManual', name: 'Original Manual', system: {}};
+  api.normalizeFeat(declared);
+  assert.deepEqual(declared.flags.original.declaredRider, {id: 'original-power-attack', attackType: 'melee', consumes: 'none'});
+  assert.equal(doc.flags.original.declaredRider, undefined);
 });
 
 test('equipment and empty-effect cleanup retain useful effects and identity', () => {

@@ -28,7 +28,10 @@ for(const id of (await fs.readdir(path.join(root,'modules'))).sort()) {
         {mtime: new Date(2000,0,1,0,0,0)}];
     }
   } else await collect(dir);
-  for(const name of ['LICENSE','NOTICE']) files[name]=[new Uint8Array(await fs.readFile(path.join(root,name))),{mtime:new Date(2000,0,1,0,0,0)}];
+  // Modules may ship their own license (e.g. MIT); only inject the repository
+  // Apache-2.0 LICENSE/NOTICE pair when the module does not provide one.
+  if(!files['LICENSE'] && !files['NOTICE']) for(const name of ['LICENSE','NOTICE'])
+    files[name]=[new Uint8Array(await fs.readFile(path.join(root,name))),{mtime:new Date(2000,0,1,0,0,0)}];
   const bytes=zipSync(files,{level:9}), name=`${id}-${manifest.version}.zip`;
   await fs.writeFile(path.join(out,name),bytes);
   artifacts.push({id,version:manifest.version,file:name,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')});

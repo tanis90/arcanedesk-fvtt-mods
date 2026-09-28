@@ -2,7 +2,7 @@
   "id": "arcane-common-display-vision",
   "title": "Arcane Common Display Vision",
   "description": "Provides a full-scene, non-GM overview for the player designated by Monk's Common Display while keeping hidden tokens hidden.",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "compatibility": {
     "minimum": "13",
     "verified": "13.351",
@@ -28,5 +28,7 @@
     "scripts/display-vision.js"
   ],
   "license": "LICENSE",
-  "url": "https://github.com/tanis90/arcanedesk-fvtt-mods"
+  "url": "https://github.com/tanis90/arcanedesk-fvtt-mods/tree/main/modules/arcane-common-display-vision",
+  "manifest": "https://raw.githubusercontent.com/tanis90/arcanedesk-fvtt-mods/main/modules/arcane-common-display-vision/module.json",
+  "download": "https://github.com/tanis90/arcanedesk-fvtt-mods/releases/download/arcane-common-display-vision-v0.2.1/arcane-common-display-vision-0.2.1.zip"
 }
