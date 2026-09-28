@@ -52,11 +52,15 @@ function sortKey(entry) {
   return `${entry.group}/${entry.id}`;
 }
 
+// The index carries exactly one current entry per id (the desktop consumer rejects
+// duplicates); publishing a newer version swaps the entry, while the superseded
+// version's immutable objects stay in the bucket for rollback.
 export function mergeIndex(index, entry) {
   if (index.packages.some(e => e.id === entry.id && String(e.version) === String(entry.version))) {
     throw Object.assign(new Error(`${entry.id}@${entry.version} already in index (paths are immutable; publish a new version)`), {code: 'IMMUTABLE'});
   }
-  const packages = [...index.packages, entry].sort((a, b) => (sortKey(a) < sortKey(b) ? -1 : 1));
+  const packages = index.packages.filter(e => e.id !== entry.id).concat(entry)
+    .sort((a, b) => (sortKey(a) < sortKey(b) ? -1 : 1));
   return {...index, generated: generatedTimestamp(), packages};
 }
 
@@ -178,6 +182,11 @@ export async function addPackage(client, {id, version, group, zipBuffer, manifes
 export async function verifyMirror({deep = [], index = null, fetchImpl = fetch} = {}) {
   const resolved = index ?? await (await fetchImpl(INDEX_URL, {cache: 'no-store'})).json();
   const problems = [];
+  const seenIds = new Set();
+  for (const entry of resolved.packages) {
+    if (seenIds.has(entry.id)) problems.push(`duplicate index entry for id ${entry.id} (the consumer requires one current version per id)`);
+    seenIds.add(entry.id);
+  }
   for (const entry of resolved.packages) {
     for (const [url, expectedBytes] of [[entry.zipUrl, entry.bytes], [entry.manifestUrl, null]]) {
       const res = await fetchImpl(url, {method: 'HEAD', cache: 'no-store'});

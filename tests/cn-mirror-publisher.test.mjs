@@ -27,6 +27,12 @@ test('mergeIndex rejects an immutable id@version and sorts by group/id', () => {
   assert.ok(serializeIndexCrlf(next).includes('\r\n'));
 });
 
+test('mergeIndex replaces the previous entry when a newer version is published', () => {
+  const existing = fakeIndex({id: 'demo', version: '1.0.0', group: 'arcane'}, {id: 'other', version: '2', group: 'arcane'});
+  const next = mergeIndex(existing, {id: 'demo', version: '1.2.3', group: 'arcane'});
+  assert.deepEqual(next.packages.map(p => p.id + '@' + p.version), ['demo@1.2.3', 'other@2']);
+});
+
 // Index store that can interleave a concurrent writer: after the first index PUT the
 // read-back shows the concurrent writer's index (our entry lost) once, then behaves.
 function clientWithRace() {
