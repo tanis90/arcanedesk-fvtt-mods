@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.5.1 - 2026-10-26
+
+### Features
+
+- Spells tab: add a second filter row (Action / Bonus / Reaction) beneath the level chips, combinable with the level filter and search.
+
+### Fixes
+
+- `actionGroupKey` now recognizes localized activation labels. Snapshots store the label in the export locale (e.g. "动作" / "附赠动作" / "反应" for zh-CN worlds), which previously all fell into the "Special" group on the Actions tab.
+
 ## 0.5.0 - 2026-09-28
 
 ### Fixes

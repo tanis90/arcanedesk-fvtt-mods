@@ -112,6 +112,9 @@ const VIEWER_I18N = {
     standardAction: "Action",
     bonusAction: "Bonus Action",
     reaction: "Reaction",
+    filterAction: "Action",
+    filterBonus: "Bonus",
+    filterReaction: "Reaction",
     specialOther: "Special / Other",
     special: "Special",
     casting: "Casting",
@@ -243,6 +246,9 @@ const VIEWER_I18N = {
     standardAction: "标准动作",
     bonusAction: "附赠动作",
     reaction: "反应",
+    filterAction: "动作",
+    filterBonus: "附赠",
+    filterReaction: "反应",
     specialOther: "特殊/其他",
     special: "特殊",
     casting: "施法",
@@ -361,6 +367,7 @@ window.characterSheetViewer = function characterSheetViewer() {
     spellQuery: "",
     itemQuery: "",
     spellLevel: "all",
+    spellActivation: "all",
     itemFilter: "all",
     tab: "overview",
     activeReferenceId: "",
@@ -469,6 +476,7 @@ window.characterSheetViewer = function characterSheetViewer() {
       this.spellQuery = "";
       this.itemQuery = "";
       this.spellLevel = "all";
+      this.spellActivation = "all";
       this.itemFilter = "all";
       if (this.activeReferenceId && !this.referenceById(this.activeReferenceId)) this.activeReferenceId = "";
       this.startPolling();
@@ -552,8 +560,9 @@ window.characterSheetViewer = function characterSheetViewer() {
       const query = this.spellQuery.trim().toLowerCase();
       return spells.filter(spell => {
         const levelMatch = this.spellLevel === "all" || String(spell.level) === this.spellLevel;
+        const activationMatch = this.spellActivation === "all" || actionGroupKey(spell.activation) === this.spellActivation;
         const text = [spell.name, spell.school, spell.components, stripHtml(spell.descriptionHtml)].join(" ").toLowerCase();
-        return levelMatch && (!query || text.includes(query));
+        return levelMatch && activationMatch && (!query || text.includes(query));
       });
     },
 
@@ -916,11 +925,13 @@ function detailFacts(item, kind) {
   return html ? `<div class="fact-row">${html}</div>` : "";
 }
 
+// Snapshot activation labels come localized from the export locale ("附赠动作" contains
+// "动作", so the bonus branch must be tested before the action branch).
 function actionGroupKey(activation) {
   const text = String(activation || "").toLowerCase();
-  if (text.includes("bonus")) return "bonus";
-  if (text.includes("reaction")) return "reaction";
-  if (text.includes("action")) return "action";
+  if (text.includes("bonus") || text.includes("附赠")) return "bonus";
+  if (text.includes("reaction") || text.includes("反应")) return "reaction";
+  if (text.includes("action") || text.includes("动作")) return "action";
   return "special";
 }
 
