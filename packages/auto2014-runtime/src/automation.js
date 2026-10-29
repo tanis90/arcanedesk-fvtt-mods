@@ -15680,7 +15680,7 @@ async function applyDreadAmbusherTurnStart(combat, changed) {
       dae: { specialDuration: ["turnEnd", "combatEnd"], stackable: "noneName", showIcon: true },
       [MODULE_ID]: { dreadAmbusherRoundOne: true },
     },
-    img: "modules/arcane-dnd5e-2014-automation/Nicons/Ability_Ambush.png",
+    img: "modules/arcane-dnd5e-2014-automation/assets/game-icons/lorc/shadow-follower.svg",
     type: "base",
     system: {},
   }]);
