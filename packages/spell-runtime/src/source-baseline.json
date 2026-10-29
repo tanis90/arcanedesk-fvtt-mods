@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "sha256": "9492a1e1a8ec8e952787e83c46fdc5a0c72a1361d2c05db872f9c546a846c0ef",
-  "note": "Reviewed shared runtime at auto2014 0.4.4 (twilight ring, blood-seeking, rest reset, summary-card removal); spell projection re-audited via spell-runtime tests and spell-parity before this update. Never refresh automatically in CI."
+  "sha256": "83e5edbe453ea0e8e61e9a95852c2fc8a4ff746c996f93bec7c51f56d509c54d",
+  "note": "Reviewed shared runtime at auto2014 0.5.0 (game-icons restyle: Dread Ambusher effect img path only, no automation logic change). Spell-only projection compared byte-for-byte before and after, then re-audited via spell-runtime and export tests. Never refresh automatically in CI."
 }
