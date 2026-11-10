@@ -61,37 +61,99 @@ export function createDocumentTools({moduleId, bindings: input}) {
     };
   }
 
-  function cleanEffects(doc, effectsById, packName = "classfeatures") {
+  function effectReferenceId(reference) {
+    if (typeof reference === 'string') return reference;
+    if (reference && typeof reference === 'object' && typeof reference._id === 'string') return reference._id;
+    return null;
+  }
+
+  /**
+   * Hydrate embedded effects from reviewed donor documents.
+   *
+   * `missingEffectPolicy` controls references whose donor document is absent:
+   * - "drop" keeps the historical behaviour (silently skip the body);
+   * - "throw" refuses to emit a dangling reference;
+   * - "defer" records unresolved ids for the caller (compiler-owned spells are
+   *   replaced after this call, so their donor gaps are checked on the emitted item).
+   *
+   * `staleReferences` maps `<itemId>:<activityId>:<effectId>` to a reviewed reason
+   * for references the donor itself removed.
+   *
+   * Spell effects keep their real ActiveEffect type/system; every other pack
+   * keeps the historical normalisation.
+   */
+  function cleanEffects(doc, effectsById, packName = "classfeatures", options = {}) {
+    const {
+      missingEffectPolicy = 'drop',
+      staleReferences = new Map(),
+      preserveActiveEffectType = packName === 'spells',
+    } = options ?? {};
     const sourceEffects = Array.isArray(doc.effects) ? doc.effects : [];
     const hydrated = [];
-    for (const effect of sourceEffects) {
-      if (typeof effect === "string" && effectsById.has(effect)) {
-        const effectDoc = clone(effectsById.get(effect));
+    const hydratedIds = new Set();
+    const unresolvedEffectIds = new Set();
+
+    const appendHydratedEffect = effectId => {
+      if (hydratedIds.has(effectId)) return;
+      const source = effectsById.get(effectId);
+      if (!source) {
+        if (missingEffectPolicy === 'throw') throw Error(`Missing effect ${effectId} referenced by ${packName} Item ${doc._id}`);
+        if (missingEffectPolicy === 'defer') unresolvedEffectIds.add(effectId);
+        return;
+      }
+      const effectDoc = clone(source);
+      if (!preserveActiveEffectType) {
         delete effectDoc.type;
         delete effectDoc.system;
-        effectDoc.origin = uuidFor(packName, doc._id);
-        pruneObject(effectDoc);
-        hydrated.push(rewriteDeep(effectDoc));
-      } else if (effect && typeof effect === "object") {
+      }
+      effectDoc.origin = uuidFor(packName, doc._id);
+      pruneObject(effectDoc);
+      hydrated.push(rewriteDeep(effectDoc));
+      hydratedIds.add(effectId);
+    };
+
+    for (const effect of sourceEffects) {
+      if (typeof effect === 'string') {
+        appendHydratedEffect(effect);
+      } else if (effect && typeof effect === 'object') {
         const effectDoc = clone(effect);
         effectDoc.origin = uuidFor(packName, doc._id);
         hydrated.push(rewriteDeep(effectDoc));
+        if (typeof effectDoc._id === 'string') hydratedIds.add(effectDoc._id);
+      }
+    }
+
+    const activityMap = doc.system?.activities ?? {};
+    for (const [activityKey, activity] of Object.entries(activityMap)) {
+      if (!activity || typeof activity !== 'object') continue;
+      if (Array.isArray(activity.effects)) {
+        const references = [];
+        for (const effect of activity.effects) {
+          const effectId = effectReferenceId(effect);
+          if (!effectId) {
+            if (effect && typeof effect === 'object') references.push(effect);
+            continue;
+          }
+          const activityId = typeof activity._id === 'string' ? activity._id : activityKey;
+          if (staleReferences.has(`${doc._id}:${activityId}:${effectId}`)) continue;
+          if (!hydratedIds.has(effectId)) {
+            if (!effectsById.has(effectId) && missingEffectPolicy !== 'throw') {
+              if (missingEffectPolicy === 'defer') unresolvedEffectIds.add(effectId);
+              references.push(typeof effect === 'string' ? { _id: effectId } : effect);
+              continue;
+            }
+            appendHydratedEffect(effectId);
+          }
+          references.push(typeof effect === 'string' ? { _id: effectId } : effect);
+        }
+        activity.effects = references;
+      }
+      if (Array.isArray(activity.appliedEffects)) {
+        activity.appliedEffects = activity.appliedEffects.filter(id => hydratedIds.has(id));
       }
     }
     doc.effects = hydrated;
-
-    const activityMap = doc.system?.activities ?? {};
-    for (const activity of Object.values(activityMap)) {
-      if (!activity || typeof activity !== "object") continue;
-      if (Array.isArray(activity.effects)) {
-        activity.effects = activity.effects
-          .map(effect => (typeof effect === "string" ? { _id: effect } : effect))
-          .filter(effect => effect && typeof effect === "object");
-      }
-      if (Array.isArray(activity.appliedEffects)) {
-        activity.appliedEffects = activity.appliedEffects.filter(id => doc.effects.some(e => e._id === id));
-      }
-    }
+    return { unresolvedEffectIds };
   }
 
   function collectCompendiumUuids(value, out = new Set()) {
@@ -121,5 +183,5 @@ export function createDocumentTools({moduleId, bindings: input}) {
     return ids;
   }
 
-  return Object.freeze({rewriteString, rewriteDeep, uuidFor, packNameForUuid, rewriteUuid, pruneObject, cleanEffects, collectCompendiumUuids, collectReferencedIdsByPack});
+  return Object.freeze({rewriteString, rewriteDeep, uuidFor, packNameForUuid, rewriteUuid, pruneObject, cleanEffects, effectReferenceId, collectCompendiumUuids, collectReferencedIdsByPack});
 }

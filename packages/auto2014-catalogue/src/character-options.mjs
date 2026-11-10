@@ -157,7 +157,11 @@ export function createCharacterOptionTools({moduleId, uuidFor, bindings: input})
 
   function featAutomationTier(doc) {
     if (Object.prototype.hasOwnProperty.call(bindings.tierOverrides, doc._id)) return bindings.tierOverrides[doc._id];
-    const hasStatic = Boolean(featStaticEffectSpecs[doc._id]);
+    // hasStatic also covers feats that keep non-empty upstream transfer effects
+    // through removeEmptyEffects (Elven Accuracy, Infernal Constitution,
+    // Squat Nimbleness): they must not be reported as plain advancement.
+    const hasStatic = Boolean(featStaticEffectSpecs[doc._id])
+      || (doc.effects ?? []).some(effect => (effect.changes ?? []).length > 0);
     const hasAdvancement = Boolean(featAdvancementSpecs[doc._id]);
     if (hasStatic && hasAdvancement) return "static-advancement";
     if (hasStatic) return "static-effect";
@@ -192,6 +196,14 @@ export function createCharacterOptionTools({moduleId, uuidFor, bindings: input})
       repeatable: false,
     };
     doc.flags ??= {};
+    // Arcane feats are their own canonical source (tracked via flags[moduleId]
+    // below). Upstream provenance can be wrong — Chef carries a stale
+    // core.sourceId pointing at Polearm Master — so drop it rather than ship it.
+    if (doc.flags.core?.sourceId) delete doc.flags.core.sourceId;
+    if (doc._stats && doc._stats.compendiumSource) {
+      doc._stats.compendiumSource = null;
+      doc._stats.duplicateSource = null;
+    }
     const automationTier = featAutomationTier(doc);
     doc.flags[moduleId] = {
       ...(doc.flags[moduleId] ?? {}),
