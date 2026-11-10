@@ -6,6 +6,11 @@ name: CN mirror release
 # 全量构建切出的 Release zip 字节；'build' 的模块由本管线构建并开 Release。
 # OSS 凭证挂在 mirror-release environment（非 repo 级）：不引用 environment 的
 # job 读不到值，引用即触发人工审批。
+#
+# 单一写者（2026-11-09 P7.1）：index.json 只由 tanis90/arcanedesk-ops 写。
+# 本流水线只上传不可变包对象 + 写回执 packages/_receipts/<id>/<version>.json，
+# 由 ops reconcile 消费后再合并进 index；任何 job 都不 PUT index.json。
+# plan 对「回执已发、index 未跟上」输出 awaiting-index：不重发、不阻塞、不算 alarm。
 
 on:
   push:
@@ -68,7 +73,12 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           OSS_ACCESS_KEY_ID: ${{ secrets.OSS_RELEASE_KEY_ID }}
           OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_RELEASE_KEY_SECRET }}
-        run: node tools/release-cn.mjs publish-all
+        run: node tools/release-cn.mjs publish-receipts
+      - name: Summarize the ops reconcile handoff
+        if: always()
+        run: |
+          echo "index.json is written by tanis90/arcanedesk-ops only." >> "$GITHUB_STEP_SUMMARY"
+          echo "This run published package objects + packages/_receipts/<id>/<version>.json; see the log for the receipt URLs." >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
