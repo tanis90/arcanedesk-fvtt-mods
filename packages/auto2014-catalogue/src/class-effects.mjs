@@ -148,8 +148,21 @@ export function createClassEffectTools({moduleId, uuidFor, bindings: input}) {
       activity.range.value = "60";
       activity.range.units = "ft";
       activity.target ??= {};
-      activity.target.prompt = true;
+      // Feats have no item-level system.target/system.range, so the turn-protocol
+      // input contract only sees this activity's target when override is true.
+      // Without it the action derives "unsupported" and never reaches the battle
+      // context or execute-turn.
+      activity.target.override = true;
+      activity.target.prompt = false;
       activity.target.affects = { ...(activity.target.affects ?? {}), type: "creature", count: "1", choice: false };
+      activity.flags ??= {};
+      activity.flags[moduleId] ??= {};
+      // Explicit interaction contract: one chosen creature other than the bard.
+      activity.flags[moduleId].interaction = {
+        version: 1,
+        input: "selected-targets",
+        selectionConstraints: [{ type: "exclude-source" }],
+      };
       activity.consumption ??= {};
       activity.consumption.targets = [{ type: "itemUses", value: "1", target: "" }];
       activity.effects = [];

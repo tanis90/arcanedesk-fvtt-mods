@@ -24,6 +24,9 @@ export const excludedRuntimeRoots = new Set([
   'findNearbyAuraSources', 'bestAuraSource', 'isExactRelentlessEnduranceInterceptionItem',
 ]);
 export const excludedRuntimeHooks = new Set([
+  // `setup` registers the Auto2014-only Bardic Inspiration token status; the
+  // standalone spell runtime must not install another module's status effects.
+  'setup',
   'getSceneControlButtons', 'renderApplicationV2', 'renderActorDirectory', 'renderActorDirectory5e',
   'preCreateItem', 'createItem', 'dnd5e.preRollInitiative', 'dnd5e.preRollAttack',
 ]);

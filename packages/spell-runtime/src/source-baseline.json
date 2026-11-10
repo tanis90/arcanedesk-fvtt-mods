@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "sha256": "83e5edbe453ea0e8e61e9a95852c2fc8a4ff746c996f93bec7c51f56d509c54d",
-  "note": "Reviewed shared runtime at auto2014 0.5.0 (game-icons restyle: Dread Ambusher effect img path only, no automation logic change). Spell-only projection compared byte-for-byte before and after, then re-audited via spell-runtime and export tests. Never refresh automatically in CI."
+  "sha256": "197b9263503e80e93f09236409b4acce66888457426ebbb08d87482014ffe412",
+  "note": "Reviewed shared runtime at auto2014 P1 content port (A 0.4.5 effects + spellitems + XGE/TCE feats + Bardic Inspiration token status). Only runtime delta is the Bardic Inspiration status constant/registration and granted-effect statuses; spell-only projection re-audited. Never refresh automatically in CI."
 }

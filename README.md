@@ -1,6 +1,6 @@
 # ArcaneDesk Foundry Modules
 
-Independent Foundry VTT modules maintained by ArcaneDesk. Each module has its own version and release artifact.
+Independent Foundry VTT modules maintained by ArcaneDesk. Each public module has its own version and release artifact.
 
 | Module | Purpose | Compatibility baseline |
 | --- | --- | --- |
@@ -28,11 +28,27 @@ npm run verify
 `dist/` contains one versioned ZIP per module and an `artifacts.json` digest manifest.
 Tests check the adapters with controlled Foundry mocks; they do not claim a new live-world certification.
 
+## Auto 2014 release boundary
+
+The complete Auto 2014 module (`arcane-dnd5e-2014-automation`) and the content-only package
+(`arcane-dnd5e-2014-content`) are developed and released only from the private source repository
+`tanis90/arcanedesk-fvtt-mods-private`. This repository receives reviewed automatic exports of approved
+bytes only. Auto 2014 hand patches are not accepted here; report the problem, and accepted fixes are made
+in the private source and re-exported.
+
+The DND5E runtime SDK is maintained only in
+[`tanis90/arcane-dnd5e-runtime`](https://github.com/tanis90/arcane-dnd5e-runtime); consume its formal
+releases instead of rebuilding or vendoring a second SDK.
+
+The public Arcane Spells 2014 suite remains an active independent release in this repository. The
+spell-suite source packages below stay public because that suite and its public build consume them. They
+are not the complete Auto 2014 module and do not authorize a separate public Auto release.
+
 Auto 2014's shared compiler is available under [packages/auto2014-compiler](packages/auto2014-compiler/README.md).
 Its canonical runtime source is available under [packages/auto2014-runtime](packages/auto2014-runtime/README.md).
 The [automation catalogue](packages/auto2014-catalogue/README.md) contains 186 recipes that compose
-caller-supplied content through the shared compiler. The complete installable Foundry module remains under
-separation; these source packages do not distribute the existing full-text compendiums or summon creature data.
+caller-supplied content through the shared compiler. These source packages do not distribute the existing
+full-text compendiums or summon creature data; the complete module is not built or released from this repository.
 The catalogue's `./summons` entry assembles summon Actors from caller-provided content and separately
 trusted validation data; it includes an original training fixture for independent verification.
 The [Foundry pack builder](packages/foundry-pack-builder/README.md) writes caller-supplied documents into

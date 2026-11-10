@@ -504,6 +504,7 @@ function assertLegacySummonProfileSource(profile) {
     "revision",
     "rulesModel",
     "summonUsage",
+    "tokenImage",
   ], label);
   const base = profile.baseActor;
   assertSummonExactKeys(base, [
@@ -540,6 +541,14 @@ function assertLegacySummonProfileSource(profile) {
   assertSummonSource(base.proficiencyBonus === 0, `${label} proficiencyBonus must remain zero`);
   assertSummonSource(base.combat.type === "independent", `${label} combat type must remain independent`);
   assertSummonSource(profile.summonUsage === "pool-choice", `${label} summonUsage must remain pool-choice`);
+  assertSummonSource(
+    profile.tokenImage === `modules/${moduleId}/assets/summons/${profile.profileId}.webp`,
+    `${label} tokenImage must point at the module summons asset`,
+  );
+  assertSummonSource(
+    profile.prototypeToken.texture.src === profile.tokenImage,
+    `${label} token texture must use tokenImage`,
+  );
 }
 
 const expected2014SummonProfiles = new Map(contracts.expected2014SummonProfiles);
@@ -564,6 +573,7 @@ function assert2014SummonProfileSource(profile) {
     "rulesModel",
     ...(profile.source === undefined ? [] : ["source"]),
     "summonUsage",
+    "tokenImage",
   ], label);
   assertSummonSource(profile.profileKind === "monster-2014", `${label}.profileKind must be monster-2014`);
   assertSummonSource(profile.rulesModel === "dnd5e-2014-simplified", `${label}.rulesModel drifted`);
@@ -659,6 +669,11 @@ function assert2014SummonProfileSource(profile) {
   assertSummonSource(
     token.dimensions.width === expectedTokenSize && token.dimensions.height === expectedTokenSize,
     `${label} token footprint drifted`,
+  );
+  assertSummonSource(
+    profile.tokenImage === `modules/${moduleId}/assets/summons/${profile.profileId}.webp`
+      && token.texture.src === profile.tokenImage,
+    `${label} token image drifted from the module summons asset`,
   );
   const capabilityIds = profile.capabilityAudit?.map(entry => entry.capabilityId);
   assertSummonSource(
@@ -1027,7 +1042,7 @@ function materializeLegacySummonActor(profile, recipe) {
     _id: profile.documentId,
     name: profile.label,
     type: "npc",
-    img: profile.icon,
+    img: profile.tokenImage ?? profile.icon,
     system: {
       abilities: Object.fromEntries(
         Object.entries(base.abilities).map(([ability, value]) => [ability, summonAbilitySource(value)]),
@@ -1553,7 +1568,7 @@ function materialize2014SummonActor(profile, recipe) {
     _id: profile.documentId,
     name: profile.label,
     type: "npc",
-    img: profile.icon,
+    img: profile.tokenImage ?? profile.icon,
     system: {
       abilities: Object.fromEntries(
         Object.entries(base.abilities).map(([ability, value]) => [
