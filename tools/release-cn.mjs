@@ -3,14 +3,34 @@ import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {inflateSync} from 'fflate';
-import {ossUrls, addPackage, verifyMirror, zipRootEntries} from './oss-mirror-publish.mjs';
+import {
+  INDEX_URL,
+  buildReceipt,
+  publishReceipt,
+  receiptUrl,
+  rewriteManifest,
+  verifyMirror,
+  zipRootEntries,
+} from './oss-mirror-publish.mjs';
 
 // CN mirror release driver. Reads tools/cn-mirror.json (the exhaustive decision table)
-// and the live mirror index, decides per module what to do, and executes publishes.
+// and the live mirror index, decides per module what to do, and publishes immutable
+// objects plus receipts.
 //
 //   node tools/release-cn.mjs plan              → JSON decision list on stdout (exit 1 on alarm)
-//   node tools/release-cn.mjs publish-all       → publish every pending module (plan must be clean)
+//   node tools/release-cn.mjs publish-receipts  → publish every pending module (plan must be clean)
+//   node tools/release-cn.mjs publish-all       → compatibility alias for publish-receipts
 //   node tools/release-cn.mjs audit             → reverse audit + full mirror verification
+//
+// index.json has one writer: tanis90/arcanedesk-ops. This driver never reads or
+// writes it as a publisher; it uploads packages/<id>/<version>/{zip,module.json}
+// and packages/_receipts/<id>/<version>.json, then ops reconcile merges the entry.
+//
+// Decisions:
+//   publish         artifact is ahead of the index and no receipt exists yet
+//   awaiting-index  receipt exists but index has not caught up — ops reconcile pending
+//   noop            index already serves this version and bytes
+//   alarm           index is ahead, same version has different bytes, or artifact/receipt is broken
 //
 // artifact 'build'  : dist/<id>-<version>.zip (npm run build), driver creates the GitHub Release.
 // artifact 'release': module ships gitignored local-only assets; driver mirrors the exact
@@ -47,8 +67,17 @@ function compareVersions(a, b) {
   return 0;
 }
 
+const sha256 = buffer => createHash('sha256').update(buffer).digest('hex');
+
+async function fetchJson(url) {
+  const res = await fetch(url, {cache: 'no-store', signal: AbortSignal.timeout(30000)});
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`GET ${url} -> HTTP ${res.status}`);
+  return res.json();
+}
+
 async function liveIndex() {
-  const res = await fetch('https://arcane-package.oss-cn-beijing.aliyuncs.com/index.json', {cache: 'no-store'});
+  const res = await fetch(INDEX_URL, {cache: 'no-store'});
   if (!res.ok) throw new Error(`index.json GET -> HTTP ${res.status}`);
   return res.json();
 }
@@ -127,7 +156,21 @@ async function createReleaseWithAsset({id, version, zipPath, token}) {
   return tag;
 }
 
-async function planFor(table, index, {dist = DIST} = {}) {
+async function artifactDigest(id, version, artifact, {dist = DIST} = {}) {
+  if (artifact === 'release') {
+    const release = await releaseByTag(`${id}-v${version}`);
+    const assetName = `${id}-${version}.zip`;
+    const asset = release?.assets.find(a => a.name === assetName);
+    if (!asset) throw new Error(`GitHub release asset ${assetName} missing`);
+    const bytes = await downloadAsset(asset.url);
+    return {sha256: sha256(bytes), bytes: bytes.length};
+  }
+  const distPath = path.join(dist, `${id}-${version}.zip`);
+  const bytes = await readFile(distPath);
+  return {sha256: sha256(bytes), bytes: bytes.length};
+}
+
+export async function planFor(table, index, {dist = DIST, probeReceipt = url => fetchJson(url)} = {}) {
   const decisions = [];
   const byId = new Map(index.packages.filter(e => e.group === 'arcane').map(e => [e.id, e]));
   for (const [id, entry] of Object.entries(table.modules)) {
@@ -137,12 +180,37 @@ async function planFor(table, index, {dist = DIST} = {}) {
     const live = byId.get(id);
     const decision = {id, version, artifact: entry.artifact, action: 'noop', reason: ''};
 
-    if (!live) {
-      decision.action = 'publish';
-      decision.reason = 'not yet mirrored';
-    } else if (compareVersions(version, live.version) > 0) {
-      decision.action = 'publish';
-      decision.reason = `upgrade ${live.version} -> ${version}`;
+    if (!live || compareVersions(version, live.version) > 0) {
+      let receipt = null;
+      try {
+        receipt = await probeReceipt(receiptUrl(id, version));
+      } catch (error) {
+        decision.action = 'alarm';
+        decision.reason = `receipt probe failed: ${error.message}`;
+        decisions.push(decision);
+        continue;
+      }
+      if (receipt) {
+        let artifact;
+        try {
+          artifact = await artifactDigest(id, version, entry.artifact, {dist});
+        } catch (error) {
+          decision.action = 'alarm';
+          decision.reason = `artifact invalid: ${error.message}`;
+          decisions.push(decision);
+          continue;
+        }
+        if (receipt.sha256 !== artifact.sha256) {
+          decision.action = 'alarm';
+          decision.reason = `receipt exists with different bytes (receipt ${receipt.sha256}, artifact ${artifact.sha256}); publish a new version`;
+        } else {
+          decision.action = 'awaiting-index';
+          decision.reason = `receipt ${receiptUrl(id, version)} exists; ops reconcile pending (sha256 ${receipt.sha256})`;
+        }
+      } else {
+        decision.action = 'publish';
+        decision.reason = live ? `upgrade ${live.version} -> ${version}` : 'not yet mirrored';
+      }
     } else if (compareVersions(version, live.version) < 0) {
       decision.action = 'alarm';
       decision.reason = `index ${live.version} is ahead of source ${version}`;
@@ -161,12 +229,12 @@ async function planFor(table, index, {dist = DIST} = {}) {
           decision.reason = `same version ${version}: release asset ${asset.size}B != mirror ${live.bytes}B`;
         } else {
           const bytes = await downloadAsset(asset.url);
-          artifactSha = createHash('sha256').update(bytes).digest('hex');
+          artifactSha = sha256(bytes);
         }
       } else {
         const distPath = path.join(dist, `${id}-${version}.zip`);
         try {
-          artifactSha = createHash('sha256').update(await readFile(distPath)).digest('hex');
+          artifactSha = sha256(await readFile(distPath));
         } catch {
           decision.action = 'alarm';
           decision.reason = `same version ${version} but dist artifact missing for byte comparison`;
@@ -214,29 +282,58 @@ async function main() {
     return;
   }
 
-  if (command === 'publish-all') {
-    const index = await liveIndex();
-    const decisions = await planFor(table, index);
+  if (command === 'publish-receipts' || command === 'publish-all') {
+    if (command === 'publish-all') {
+      console.error('note: publish-all no longer writes index.json; running publish-receipts instead');
+    }
+    const decisions = await planFor(table, await liveIndex());
     const alarms = decisions.filter(d => d.action === 'alarm');
     if (alarms.length) {
       console.error('refusing to publish while alarms are pending:\n' + alarms.map(a => `  ${a.id}: ${a.reason}`).join('\n'));
       process.exit(1);
     }
     const pending = decisions.filter(d => d.action === 'publish');
-    if (!pending.length) { console.log('nothing to publish'); return; }
+    if (!pending.length) {
+      for (const d of decisions.filter(d => d.action === 'awaiting-index')) {
+        console.log(`awaiting-index: ${d.id}@${d.version} — ${d.reason}`);
+      }
+      console.log('nothing to publish');
+      return;
+    }
     const {createClient} = await import('./oss-mirror-publish.mjs');
     const client = await createClient();
-    const receipt = [];
+    const source = {
+      repo: REPO,
+      commit: process.env.GITHUB_SHA || 'local',
+      workflow: process.env.GITHUB_WORKFLOW || 'mirror-release',
+      runId: process.env.GITHUB_RUN_ID || 'local',
+    };
+    const published = [];
     for (const d of pending) {
       const manifest = JSON.parse(await readFile(path.join(ROOT, 'modules', d.id, 'module.json'), 'utf8'));
       const {zipBuffer, zipPath} = await loadArtifact(d.id, d.version, d.artifact);
       if (d.artifact === 'build' && zipPath) await createReleaseWithAsset({id: d.id, version: d.version, zipPath, token});
-      const entry = await addPackage(client, {id: d.id, version: d.version, group: 'arcane', zipBuffer, manifest});
-      receipt.push(entry);
-      console.log(`published ${entry.id}@${entry.version} (${entry.bytes} bytes)`);
+      const manifestBytes = Buffer.from(`${JSON.stringify(rewriteManifest(manifest, d.id, d.version), null, 2)}\n`, 'utf8');
+      const receipt = buildReceipt({
+        id: d.id,
+        version: d.version,
+        zipBuffer,
+        manifest,
+        manifestBytes,
+        source,
+      });
+      const status = await publishReceipt(client, {receipt, zipBuffer, manifestBytes});
+      published.push({
+        id: receipt.id,
+        version: receipt.version,
+        status,
+        bytes: receipt.bytes,
+        sha256: receipt.sha256,
+        receiptUrl: receiptUrl(receipt.id, receipt.version),
+      });
+      console.log(`${status}: ${receipt.id}@${receipt.version} (${receipt.bytes} bytes, sha256 ${receipt.sha256})`);
     }
-    await verifyMirror({deep: receipt.map(e => e.id)});
-    console.log(JSON.stringify({published: receipt.map(e => ({id: e.id, version: e.version, bytes: e.bytes, sha256: e.sha256, ...ossUrls(e.id, e.version)}))}, null, 2));
+    console.log(JSON.stringify({published, indexWriter: 'tanis90/arcanedesk-ops'}, null, 2));
     return;
   }
 
@@ -258,7 +355,7 @@ async function main() {
     return;
   }
 
-  throw new Error(`unknown command: ${command ?? '(none)'} — expected plan | publish-all | audit`);
+  throw new Error(`unknown command: ${command ?? '(none)'} — expected plan | publish-receipts | publish-all | audit`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -6,15 +6,17 @@ import {fileURLToPath} from 'node:url';
 // CN mirror publisher for the arcane-package OSS bucket (Beijing).
 // Contract: apps/desktop/distribution/oss-mirror-contract.md (arcanedesk repo).
 //
-// Differences from the retired desktop-repo CLI edition:
-//   - SDK auth (ali-oss) via OSS_ACCESS_KEY_ID/OSS_ACCESS_KEY_SECRET env — CI-friendly,
-//     no local aliyun CLI dependency.
-//   - index.json updates use If-Match optimistic locking: fetch-merge-put retries on
-//     412 so CI publishers and local publishers cannot silently overwrite each other.
-//   - immutable objects upload with x-oss-forbid-overwrite.
-//   - removal stays a manual arcane-admin operation; this tool only adds and verifies.
+// Single-writer split (P7.1): index.json is written only by tanis90/arcanedesk-ops.
+// This module publishes immutable package objects under packages/<id>/<version>/
+// and a receipt packages/_receipts/<id>/<version>.json that the ops reconcile
+// merges into index.json. Never add an index.json PUT here.
 //
-// CLI: node tools/oss-mirror-publish.mjs add --id <id> --version <v> --group <g> \
+//   - immutable objects upload with x-oss-forbid-overwrite.
+//   - a receipt is written once per version and records the zip/manifest hashes,
+//     the public URLs and the source commit the ops reconcile needs.
+//   - removal stays a manual arcanedesk-ops operation; this tool only adds and verifies.
+//
+// CLI: node tools/oss-mirror-publish.mjs add --id <id> --version <v> \
 //          --zip <path> --manifest <module.json>
 //      node tools/oss-mirror-publish.mjs verify
 
@@ -22,9 +24,11 @@ export const BUCKET = 'arcane-package';
 export const BASE_URL = 'https://arcane-package.oss-cn-beijing.aliyuncs.com';
 export const INDEX_KEY = 'index.json';
 export const INDEX_URL = `${BASE_URL}/${INDEX_KEY}`;
-const INDEX_CACHE_CONTROL = 'no-cache, max-age=0, must-revalidate';
+export const RECEIPT_PREFIX = 'packages/_receipts';
+export const RECEIPT_SCHEMA_VERSION = 1;
 const OBJECT_CACHE_CONTROL = 'public, max-age=31536000, immutable';
-const INDEX_WRITE_ATTEMPTS = 3;
+
+const sha256 = buffer => createHash('sha256').update(buffer).digest('hex');
 
 export function ossUrls(id, version) {
   return {
@@ -40,28 +44,44 @@ export function rewriteManifest(manifest, id, version) {
   return {...manifest, download: urls.zipUrl, manifest: urls.manifestUrl};
 }
 
-export function serializeIndexCrlf(index) {
-  return `${JSON.stringify(index, null, 2).replace(/\n/g, '\r\n')}\r\n`;
+export function receiptKey(id, version) {
+  return `${RECEIPT_PREFIX}/${id}/${version}.json`;
 }
 
-function generatedTimestamp() {
+export function receiptUrl(id, version) {
+  return `${BASE_URL}/${receiptKey(id, version)}`;
+}
+
+function publishedTimestamp() {
   return `${new Date().toISOString().slice(0, 19)}+00:00`;
 }
 
-function sortKey(entry) {
-  return `${entry.group}/${entry.id}`;
-}
-
-// The index carries exactly one current entry per id (the desktop consumer rejects
-// duplicates); publishing a newer version swaps the entry, while the superseded
-// version's immutable objects stay in the bucket for rollback.
-export function mergeIndex(index, entry) {
-  if (index.packages.some(e => e.id === entry.id && String(e.version) === String(entry.version))) {
-    throw Object.assign(new Error(`${entry.id}@${entry.version} already in index (paths are immutable; publish a new version)`), {code: 'IMMUTABLE'});
+// The receipt is the ops-side work order: everything index.json needs for this
+// version, plus provenance, written once per version (immutable path).
+export function buildReceipt({id, version, zipBuffer, manifest, manifestBytes = null, source}) {
+  if (manifest.id !== id) throw new Error(`manifest id "${manifest.id}" != "${id}"`);
+  if (String(manifest.version) !== String(version)) {
+    throw new Error(`manifest version "${manifest.version}" != "${version}"`);
   }
-  const packages = index.packages.filter(e => e.id !== entry.id).concat(entry)
-    .sort((a, b) => (sortKey(a) < sortKey(b) ? -1 : 1));
-  return {...index, generated: generatedTimestamp(), packages};
+  if (!source || typeof source !== 'object') throw new Error('buildReceipt requires a source object');
+  const urls = ossUrls(id, version);
+  const uploadedManifestBytes = manifestBytes
+    ?? Buffer.from(`${JSON.stringify(rewriteManifest(manifest, id, version), null, 2)}\n`, 'utf8');
+  return {
+    schemaVersion: RECEIPT_SCHEMA_VERSION,
+    kind: 'module',
+    id,
+    version,
+    group: 'arcane',
+    bytes: zipBuffer.length,
+    sha256: sha256(zipBuffer),
+    zipUrl: urls.zipUrl,
+    manifestUrl: urls.manifestUrl,
+    manifestSha256: sha256(uploadedManifestBytes),
+    source,
+    publishedAt: publishedTimestamp(),
+    indexWriter: 'tanis90/arcanedesk-ops',
+  };
 }
 
 // Read the zip central directory to assert module.json sits at the archive root
@@ -96,13 +116,6 @@ export async function createClient(env = process.env) {
   });
 }
 
-async function fetchIndex(client) {
-  const res = await client.get(INDEX_KEY);
-  const index = JSON.parse(res.content.toString('utf8'));
-  if (!Array.isArray(index.packages)) throw new Error('index.json has no packages[]');
-  return {index, etag: res.res?.headers?.etag};
-}
-
 export async function putImmutable(client, key, buffer, contentType) {
   try {
     await client.put(key, buffer, {
@@ -119,8 +132,7 @@ export async function putImmutable(client, key, buffer, contentType) {
       const storedLength = Number(head?.res?.headers?.['content-length']);
       if (storedLength === buffer.length) {
         const stored = await client.get(key);
-        const storedHash = createHash('sha256').update(stored.content).digest('hex');
-        if (storedHash === createHash('sha256').update(buffer).digest('hex')) return;
+        if (sha256(stored.content) === sha256(buffer)) return;
       }
       throw new Error(`immutable object exists with different bytes: ${key}`);
     }
@@ -128,52 +140,66 @@ export async function putImmutable(client, key, buffer, contentType) {
   }
 }
 
-// mutate(index) -> nextIndex or null (nothing to do).
-// Aliyun OSS PutObject has no conditional write (If-Match exists on Get/Head only;
-// the 2024 conditional-write feature is If-None-Match:* create-if-absent), so the
-// fetch-merge-put cycle is guarded by a post-write read-back instead: every entry of
-// the fetched base plus our additions must be present in the index we just overwrote,
-// otherwise another writer interleaved and the merge is retried from a fresh fetch.
-// Both CI tracks serialize themselves via workflow concurrency groups; the residual
-// window is a CI publish racing a local manual publish within the same second.
-export async function commitIndex(client, mutate) {
-  for (let attempt = 1; attempt <= INDEX_WRITE_ATTEMPTS; attempt += 1) {
-    const {index} = await fetchIndex(client);
-    const next = await mutate(index);
-    if (!next) return null;
-    await client.put(INDEX_KEY, Buffer.from(serializeIndexCrlf(next), 'utf8'), {
-      headers: {'Cache-Control': INDEX_CACHE_CONTROL},
-    });
-    const {index: after} = await fetchIndex(client);
-    const afterIds = new Set(after.packages.map(e => `${e.id}@${e.version}`));
-    const survived = index.packages.every(e => afterIds.has(`${e.id}@${e.version}`));
-    const landed = next.packages.every(e => afterIds.has(`${e.id}@${e.version}`));
-    if (survived && landed) return after;
-  }
-  throw new Error(`index.json update failed read-back verification ${INDEX_WRITE_ATTEMPTS} times`);
+async function fetchJson(url, {method = 'GET', headers} = {}) {
+  // OSS answers a gzip-capable HEAD with Content-Encoding: gzip and no Content-Length,
+  // which makes Node report -1 instead of the stored object size. Read-back checks
+  // raw bytes, so every HEAD must opt out of transport compression.
+  const requestHeaders = method === 'HEAD' ? {...headers, 'Accept-Encoding': 'identity'} : headers;
+  const res = await fetch(url, {method, headers: requestHeaders, cache: 'no-store', signal: AbortSignal.timeout(30000)});
+  if (method === 'HEAD') return {status: res.status, length: Number(res.headers.get('content-length') ?? -1)};
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`GET ${url} -> HTTP ${res.status}`);
+  return res.json();
 }
 
-export async function addPackage(client, {id, version, group, zipBuffer, manifest}) {
-  if (manifest.id !== id) throw new Error(`manifest id "${manifest.id}" != "${id}"`);
-  if (String(manifest.version) !== String(version)) {
-    throw new Error(`manifest version "${manifest.version}" != "${version}"`);
-  }
-  const names = zipRootEntries(zipBuffer);
-  if (!names.includes('module.json')) {
-    throw new Error(`module.json not at zip root (entries: ${names.slice(0, 5).join(', ')}…)`);
-  }
-  const bytes = zipBuffer.length;
-  const sha256 = createHash('sha256').update(zipBuffer).digest('hex');
-  const dir = `packages/${id}/${version}`;
-  const urls = ossUrls(id, version);
+const HEAD_READ_OPTIONS = {method: 'HEAD', headers: {'Accept-Encoding': 'identity'}};
 
-  await putImmutable(client, `${dir}/${id}-${version}.zip`, zipBuffer, 'application/zip');
-  await putImmutable(client, `${dir}/module.json`,
-    Buffer.from(`${JSON.stringify(rewriteManifest(manifest, id, version), null, 2)}\n`, 'utf8'),
-    'application/json');
+// Post-upload read-back over the public read path: objects must be there with the
+// exact size, and the manifest must carry the id/version the receipt claims.
+async function assertLanded(receipt, fetchJsonImpl = fetchJson) {
+  const [zip, man] = await Promise.all([
+    fetchJsonImpl(receipt.zipUrl, HEAD_READ_OPTIONS),
+    fetchJsonImpl(receipt.manifestUrl, HEAD_READ_OPTIONS),
+  ]);
+  if (zip.status !== 200) throw new Error(`${receipt.id}@${receipt.version}: zip HEAD -> HTTP ${zip.status}`);
+  if (zip.length !== receipt.bytes) {
+    throw new Error(`${receipt.id}@${receipt.version}: zip content-length ${zip.length} != ${receipt.bytes}`);
+  }
+  if (man.status !== 200) throw new Error(`${receipt.id}@${receipt.version}: manifest HEAD -> HTTP ${man.status}`);
+  const live = await fetchJsonImpl(receipt.manifestUrl);
+  if (!live || live.id !== receipt.id || String(live.version) !== String(receipt.version)) {
+    throw new Error(`${receipt.id}@${receipt.version}: manifest id/version mismatch after upload`);
+  }
+}
 
-  await commitIndex(client, index => mergeIndex(index, {id, version, group, bytes, sha256, ...urls}));
-  return {id, version, group, bytes, sha256, ...urls};
+// Publish objects then the receipt. A receipt is the commit point: replaying the
+// same bytes is idempotent, while different bytes on the same immutable path are
+// rejected (publish a new version instead).
+export async function publishReceipt(client, {receipt, zipBuffer, manifestBytes, fetchJsonImpl = fetchJson}) {
+  if (sha256(zipBuffer) !== receipt.sha256) {
+    throw new Error(`${receipt.id}@${receipt.version}: zip bytes do not match the receipt sha256`);
+  }
+  if (sha256(manifestBytes) !== receipt.manifestSha256) {
+    throw new Error(`${receipt.id}@${receipt.version}: manifest bytes do not match the receipt manifestSha256`);
+  }
+  const existing = await fetchJsonImpl(receiptUrl(receipt.id, receipt.version));
+  if (existing) {
+    if (existing.sha256 !== receipt.sha256) {
+      throw new Error(`${receipt.id}@${receipt.version}: receipt exists with different bytes — paths are immutable, publish a new version`);
+    }
+    await assertLanded(existing, fetchJsonImpl);
+    return 'already-published';
+  }
+  if (!zipRootEntries(zipBuffer).includes('module.json')) {
+    throw new Error(`${receipt.id}: module.json not at zip root`);
+  }
+  const dir = `packages/${receipt.id}/${receipt.version}`;
+  await putImmutable(client, `${dir}/${receipt.id}-${receipt.version}.zip`, zipBuffer, 'application/zip');
+  await putImmutable(client, `${dir}/module.json`, manifestBytes, 'application/json');
+  await assertLanded(receipt, fetchJsonImpl);
+  await putImmutable(client, receiptKey(receipt.id, receipt.version),
+    Buffer.from(`${JSON.stringify(receipt, null, 2)}\n`, 'utf8'), 'application/json');
+  return 'published';
 }
 
 // Anonymous read-path audit over the public bucket: every index entry must HEAD 200
@@ -219,13 +245,21 @@ async function main() {
     return;
   }
   if (command === 'add') {
-    const {id, version, group, zip, manifest} = args;
+    const {id, version, zip, manifest} = args;
     const zipBuffer = await readFile(zip);
     const manifestObject = JSON.parse(await readFile(manifest, 'utf8'));
+    const manifestBytes = Buffer.from(`${JSON.stringify(rewriteManifest(manifestObject, id, version), null, 2)}\n`, 'utf8');
+    const source = {
+      repo: process.env.GITHUB_REPOSITORY || 'tanis90/arcanedesk-fvtt-mods',
+      commit: process.env.GITHUB_SHA || 'local',
+      workflow: process.env.GITHUB_WORKFLOW || 'local',
+      runId: process.env.GITHUB_RUN_ID || 'local',
+    };
+    const receipt = buildReceipt({id, version, zipBuffer, manifest: manifestObject, manifestBytes, source});
     const client = await createClient();
-    const entry = await addPackage(client, {id, version, group, zipBuffer, manifest: manifestObject});
-    console.log(`published ${entry.id}@${entry.version} (${entry.bytes} bytes, sha256 ${entry.sha256})`);
-    console.log(`verified ${await verifyMirror({deep: [id]})} packages`);
+    const status = await publishReceipt(client, {receipt, zipBuffer, manifestBytes});
+    console.log(`${status}: ${receipt.id}@${receipt.version} (${receipt.bytes} bytes, sha256 ${receipt.sha256})`);
+    console.log(`receipt: ${receiptUrl(receipt.id, receipt.version)}`);
     return;
   }
   throw new Error(`unknown command: ${command ?? '(none)'} — expected add | verify`);

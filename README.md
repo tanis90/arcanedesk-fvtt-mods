@@ -28,6 +28,13 @@ npm run verify
 `dist/` contains one versioned ZIP per module and an `artifacts.json` digest manifest.
 Tests check the adapters with controlled Foundry mocks; they do not claim a new live-world certification.
 
+## CN mirror publishing
+
+The `mirror-release` workflow uploads immutable package objects and a receipt at
+`packages/_receipts/<id>/<version>.json`. It does not write `index.json`; only `tanis90/arcanedesk-ops`
+merges receipts into the mirror index. A version whose receipt exists but whose index entry has not been
+reconciled yet is reported as `awaiting-index`, not republished.
+
 ## Auto 2014 release boundary
 
 The complete Auto 2014 module (`arcane-dnd5e-2014-automation`) and the content-only package

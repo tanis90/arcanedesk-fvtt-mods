@@ -25,3 +25,12 @@ The public Arcane Spells 2014 suite remains an active independent release. Keep 
 and its public build consume (`spell-compiler`, `spells-2014`, `spell-runtime`, `auto2014-runtime`,
 `auto2014-catalogue`); they are not leftovers of the complete Auto 2014 module and do not authorize a
 separate public Auto release.
+
+## CN mirror publishing
+
+The `mirror-release` workflow publishes immutable package objects under `packages/<id>/<version>/` and a
+receipt at `packages/_receipts/<id>/<version>.json`. It never writes `index.json`: `tanis90/arcanedesk-ops`
+is the sole index writer and merges receipts through its reconcile step. Do not add an index PUT to
+`tools/release-cn.mjs`, `tools/oss-mirror-publish.mjs` or the workflow. Receipts stay under `packages/*`
+because the release RAM policy grants writes only there. A version whose receipt exists but whose index
+entry has not been reconciled is reported as `awaiting-index`, not republished.
