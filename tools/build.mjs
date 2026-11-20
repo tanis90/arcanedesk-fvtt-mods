@@ -12,12 +12,19 @@ for(const id of (await fs.readdir(path.join(root,'modules'))).sort()) {
   const manifest=JSON.parse(await fs.readFile(path.join(dir,'module.json'),'utf8'));
   if(manifest.id!==id || !/^\d+\.\d+\.\d+$/.test(manifest.version)) throw Error('Invalid module identity: '+id);
   const files={};
+  // Authoring-only helpers must never ship. `scripts/tools/` holds local utilities
+  // (image slicing, one-off generators) that are not part of the module runtime and
+  // have historically carried machine-specific paths.
+  const excludedDirs = new Set(['scripts/tools']);
   async function collect(base,rel='') {
     for(const name of (await fs.readdir(base)).sort()) {
       if(name==='validate.mjs') continue;
       const full=path.join(base,name), key=rel+name, st=await fs.lstat(full);
       if(st.isSymbolicLink()) throw Error('Symlink in module');
-      if(st.isDirectory()) await collect(full,key+'/');
+      if(st.isDirectory()) {
+        if(excludedDirs.has(key.replace(/\/$/,''))) continue;
+        await collect(full,key+'/');
+      }
       else files[key]=[new Uint8Array(await fs.readFile(full)),{mtime:new Date(2000,0,1,0,0,0)}];
     }
   }

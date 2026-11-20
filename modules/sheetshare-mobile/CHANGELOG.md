@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.5.2 - 2026-11-19
+
+### Fixes
+
+- Stop shipping authoring helpers. The module ZIP no longer contains `scripts/tools/`; those utilities are local-only and are now excluded when the package is assembled.
+- `scripts/tools/slice-class-icons.py` read its source sheet and output directory from hardcoded absolute paths. It now takes `SHEETSHARE_ICON_SHEET` and `SHEETSHARE_ICON_DEST` from the environment, with a repo-relative default destination, so the file is portable and carries no machine-specific paths.
+
+### Notes
+
+- No runtime behaviour changed. Snapshots, sharing, and existing actor data are unaffected; installing this version needs no migration.
+
 ## 0.5.1 - 2026-10-26
 
 ### Features
