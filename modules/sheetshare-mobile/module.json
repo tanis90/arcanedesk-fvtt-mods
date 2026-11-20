@@ -2,7 +2,7 @@
   "id": "sheetshare-mobile",
   "title": "SheetShare Mobile",
   "description": "Mobile-first, password-protected character sheet sharing for Foundry VTT.",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "authors": [
     {
       "name": "tanis90",

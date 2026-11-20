@@ -12,7 +12,8 @@ try {
   assert.deepEqual(packedPackages.map(p=>p.name).sort(), [
     '@arcanedesk/auto2014-catalogue', '@arcanedesk/auto2014-compiler',
     '@arcanedesk/auto2014-runtime', '@arcanedesk/foundry-pack-builder',
-    '@arcanedesk/automation-contracts', '@arcanedesk/spell-compiler', '@arcanedesk/spells-2014', '@arcanedesk/spell-runtime',
+    '@arcanedesk/automation-contracts', '@arcanedesk/spell-compiler', '@arcanedesk/spells-2014', '@arcanedesk/spells-2024',
+    '@arcanedesk/spell-runtime',
   ].sort());
   for(const packed of packedPackages) {
     assert(packed.files.some(f=>f.path==='LICENSE'));

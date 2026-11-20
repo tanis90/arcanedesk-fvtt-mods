@@ -1,0 +1,29 @@
+{
+  "name": "@arcanedesk/spells-2024",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "exports": {
+    ".": "./src/index.mjs",
+    "./scripts": "./src/scripts.mjs",
+    "./spells/*": "./src/spells/*/definition.mjs"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@arcanedesk/automation-contracts": "0.1.0",
+    "@arcanedesk/spell-compiler": "0.9.0",
+    "@arcanedesk/spells-2014": "0.1.0"
+  }
+}

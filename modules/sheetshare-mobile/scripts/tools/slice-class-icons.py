@@ -1,11 +1,24 @@
-"""Slice the 4x3 class-icon sheet into transparent PNGs for the viewer."""
+"""Slice the 4x3 class-icon sheet into transparent PNGs for the viewer.
+
+Local authoring utility. Not part of the module runtime.
+
+Usage (paths are never hardcoded so this file stays portable):
+
+    SHEETSHARE_ICON_SHEET=/path/to/class-icons.jpg \
+    SHEETSHARE_ICON_DEST=/path/to/viewer/assets/classes \
+    python scripts/tools/slice-class-icons.py
+"""
+import os
 from collections import deque
 
 import numpy as np
 from PIL import Image
 
-SRC = r"C:\Users\yangqi\Pictures\职业图标2.jpg"
-OUT_DIR = r"C:\Users\yangqi\code\sheetshare-mobile\viewer\assets\classes"
+DEFAULT_DEST = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            os.pardir, os.pardir, "viewer", "assets", "classes")
+
+SRC = os.environ.get("SHEETSHARE_ICON_SHEET")
+OUT_DIR = os.environ.get("SHEETSHARE_ICON_DEST") or os.path.normpath(DEFAULT_DEST)
 
 GRID = [
     ["rogue", "fighter", "wizard"],
@@ -68,7 +81,11 @@ def extract(cell_rgb: np.ndarray) -> Image.Image:
 
 
 def main():
-    import os
+    if not SRC:
+        raise SystemExit(
+            "Set SHEETSHARE_ICON_SHEET to the 4x3 class-icon sheet image.\n"
+            "Optional: SHEETSHARE_ICON_DEST for the output directory."
+        )
     os.makedirs(OUT_DIR, exist_ok=True)
     sheet = np.array(Image.open(SRC).convert("RGB"), dtype=np.int16)
     h, w, _ = sheet.shape
